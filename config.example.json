@@ -1,0 +1,27 @@
+{
+  "_comment": "脱敏默认配置：不包含任何真实地址或凭据。启动后请在页面右上角的数据库连接面板中填写，连接信息默认只保存在内存。",
+  "server": {
+    "port": 8765
+  },
+  "paths": {
+    "workspace": ".",
+    "jdk_bin": "",
+    "driver_jar": "",
+    "data_dir": "data"
+  },
+  "matrix": {
+    "driver_class": "",
+    "url_template": "",
+    "username": "",
+    "password": "",
+    "clusters": {},
+    "sql_timeout_seconds": 180,
+    "stat_timeout_seconds": 600
+  },
+  "ui": {
+    "default_db": "",
+    "sql_max_rows": 500,
+    "stat_max_rows": 5000,
+    "common_dbs": []
+  }
+}

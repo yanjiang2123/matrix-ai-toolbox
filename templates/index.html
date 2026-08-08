@@ -1,0 +1,2317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Matrix AI 数据工具箱</title>
+<style>
+:root{
+  --bd:#dfe3e8; --bg:#f5f6f8; --fg:#1f2328; --mute:#666; --line:#eceef1;
+  --pri:#2F5496; --pri-d:#24406f; --ok:#0a7d32; --err:#c0392b; --warn:#b26a00;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--fg);background:var(--bg)}
+code,pre,textarea,.mono{font-family:Menlo,Consolas,monospace}
+
+/* 顶栏 */
+header{background:#fff;border-bottom:1px solid var(--bd);padding:10px 18px;
+  display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+header h1{margin:0;font-size:17px;font-weight:600}
+.env{font-size:12px;color:var(--ok)}
+.env.bad{color:var(--err)}
+header .right{margin-left:auto;display:flex;gap:8px}
+
+/* Tab */
+nav{background:#fff;border-bottom:1px solid var(--bd);padding:0 18px;display:flex;gap:2px;
+  position:sticky;top:52px;z-index:19;overflow-x:auto}
+nav button{border:0;background:none;padding:10px 16px;font-size:14px;cursor:pointer;
+  color:var(--mute);border-bottom:2px solid transparent;white-space:nowrap}
+nav button:hover{color:var(--fg)}
+nav button.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:600}
+
+main{padding:16px 18px 60px}
+.page{display:none;scroll-margin-top:108px}
+.page.on{display:block}
+.hint{color:var(--mute);font-size:13px;margin:0 0 12px}
+
+/* 卡片与表单 */
+.card{background:#fff;border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row+.row{margin-top:10px}
+label{font-size:13px;color:var(--mute)}
+select,input[type=text],input[type=password],input[type=number],input[type=file]{
+  border:1px solid var(--bd);border-radius:6px;padding:6px 8px;font-size:13px;background:#fff}
+select:focus,input:focus,textarea:focus{outline:2px solid #cfdcf5;border-color:var(--pri)}
+textarea{width:100%;border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:13px;resize:vertical}
+textarea.dark{background:#1e1e1e;color:#d4d4d4;border-color:#333}
+button.btn{border:1px solid var(--bd);background:#fff;border-radius:6px;padding:6px 12px;
+  font-size:13px;cursor:pointer}
+button.btn:hover{background:#f0f2f5}
+button.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}
+button.btn.pri:hover{background:var(--pri-d)}
+button.btn:disabled{opacity:.55;cursor:not-allowed}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--fg)}
+.step{display:inline-block;background:var(--pri);color:#fff;border-radius:50%;
+  width:19px;height:19px;text-align:center;line-height:19px;font-size:12px;margin-right:6px}
+
+/* 统计条 */
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.stat{background:#fff;border:1px solid var(--bd);border-radius:6px;padding:7px 12px;font-size:13px}
+.stat b{font-size:16px;margin-left:5px}
+.stat.a b{color:var(--pri)} .stat.w b{color:var(--warn)} .stat.e b{color:var(--err)}
+.stat.g b{color:var(--ok)}
+.stat.click{cursor:pointer}
+.stat.click:hover{background:#f0f2f5}
+.stat.click.on{border-color:var(--pri);box-shadow:0 0 0 2px #dbe4f5}
+
+/* 结果表 */
+.tablewrap{background:#fff;border:1px solid var(--bd);border-radius:8px;overflow:auto;max-height:56vh}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;
+  white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis}
+th{background:#f7f8fa;position:sticky;top:0;font-weight:600;z-index:2}
+tbody tr:hover{background:#f7f9fc}
+td.num{text-align:right;font-family:Menlo,monospace}
+td.neg{color:var(--err)} td.pos{color:var(--ok)}
+td.diffcell{background:#fdecea;color:#8c2018}
+.empty{padding:26px;text-align:center;color:var(--mute)}
+
+/* 主键多选 */
+.keys{display:flex;flex-wrap:wrap;gap:6px;max-height:130px;overflow:auto}
+.keys label{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--bd);
+  border-radius:14px;padding:3px 10px;cursor:pointer;background:#fff;color:var(--fg)}
+.keys label:has(input:checked){background:#e8eefb;border-color:var(--pri);color:var(--pri)}
+
+/* 底部状态栏 */
+footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--bd);
+  padding:6px 18px;font-size:12px;color:var(--mute);display:flex;gap:12px;align-items:center;z-index:20}
+#msg.err{color:var(--err)} #msg.ok{color:var(--ok)}
+.spin{width:12px;height:12px;border:2px solid #ccd;border-top-color:var(--pri);
+  border-radius:50%;animation:sp .7s linear infinite;display:none}
+.spin.on{display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.warnbox{background:#fff6e5;border:1px solid #f0d9a8;color:#7a5200;border-radius:6px;
+  padding:9px 12px;font-size:13px;margin-bottom:12px}
+.warnbox summary{cursor:pointer;font-weight:600}
+.conn-grid{display:grid;grid-template-columns:150px minmax(220px,1fr);gap:9px 12px;align-items:center}
+.conn-grid input,.conn-grid textarea{width:100%}
+.conn-note{background:#eef5ff;border:1px solid #cbdcf5;border-radius:6px;padding:8px 10px;
+  color:#31517c;font-size:12px;margin-bottom:12px}
+.ai-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1.4fr);gap:12px}
+.ai-result{white-space:pre-wrap;line-height:1.75}
+.pill{display:inline-block;border-radius:12px;padding:2px 9px;font-size:12px;background:#eef1f5;color:#48515c}
+.pill.safe{background:#eaf7ee;color:#14602d}.pill.warning{background:#fff6e5;color:#7a5200}
+.pill.blocked{background:#fdecea;color:#8c2018}
+@media(max-width:760px){.conn-grid{grid-template-columns:1fr}.conn-grid label{margin-top:4px}}
+@media(max-width:900px){.ai-grid{grid-template-columns:1fr}}
+
+/* 子标签 */
+.subnav{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.subnav button{border:1px solid var(--bd);background:#fff;border-radius:16px;
+  padding:5px 14px;font-size:13px;cursor:pointer;color:var(--mute)}
+.subnav button:hover{background:#f0f2f5}
+.subnav button.on{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}
+.sub{display:none}
+.sub.on{display:block}
+
+/* 风险卡片 */
+.risk{border-left:4px solid var(--bd);background:#fff;border:1px solid var(--bd);
+  border-radius:6px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+.risk.high{border-left-color:var(--err)}
+.risk.mid{border-left-color:var(--warn)}
+.risk.low{border-left-color:#888}
+.risk b{font-size:14px}
+.risk .d{color:#333;margin-top:4px;white-space:pre-wrap}
+.risk .a{color:var(--mute);margin-top:4px}
+.verdict{border-radius:6px;padding:11px 14px;margin-bottom:12px;font-size:13px;border:1px solid}
+.verdict.ok{background:#eaf7ee;border-color:#b7e0c2;color:#14602d}
+.verdict.diff{background:#fdecea;border-color:#f5c2bd;color:#8c2018}
+.verdict.warn{background:#fff8e6;border-color:#f0dca8;color:#7a5600}
+.verdict b{display:block;font-size:15px;margin-bottom:3px}
+
+/* 代码片段 */
+.seg{background:#fff;border:1px solid var(--bd);border-radius:6px;margin-bottom:8px}
+.seg .hd{padding:8px 12px;background:#f7f8fa;border-bottom:1px solid var(--bd);
+  cursor:pointer;font-size:13px;display:flex;gap:8px;align-items:center}
+.seg .hd .tag{background:var(--pri);color:#fff;border-radius:4px;padding:1px 7px;font-size:12px}
+.seg .hd .n{color:var(--mute);margin-left:auto;font-size:12px}
+.seg pre{margin:0;padding:10px 12px;overflow:auto;max-height:320px;font-size:12px;
+  background:#1e1e1e;color:#d4d4d4;display:none;white-space:pre-wrap;word-break:break-all}
+.seg.open pre{display:block}
+.layer{background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px 12px;
+  margin-bottom:8px;font-size:13px}
+.layer .nm{font-weight:600;color:var(--pri)}
+.layer .tb{color:#333;margin:4px 0}
+.layer .ad{color:var(--warn)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Matrix AI 数据工具箱</h1>
+  {% if problems %}
+    <span class="env bad">⚠️ 环境不完整，连库会失败</span>
+  {% else %}
+    <span class="env">✓ JDK / 驱动就绪</span>
+  {% endif %}
+  <div class="right">
+    <button class="btn" onclick="toggleAiConfigPanel()">AI 模型</button>
+    <button class="btn pri" onclick="toggleConnectionPanel()">数据库连接</button>
+    <button class="btn" onclick="switchPage('files')">产物文件</button>
+    <button class="btn" onclick="post('/api/reveal',{}).then(()=>say('已在 Finder 打开'))">打开产物目录</button>
+  </div>
+</header>
+
+<nav>
+  <button class="on" data-p="ai">AI SQL 助手</button>
+  <button data-p="probe">SQL 排查工作台</button>
+  <button data-p="sql">SQL 查询</button>
+  <button data-p="rows">表行数统计</button>
+  <button data-p="cmp">库数据对比</button>
+  <button data-p="one">单表数据对比</button>
+  <button data-p="map">表对应关系</button>
+  <button data-p="xd">文件比对</button>
+  <button data-p="t2x">转 Excel</button>
+  <button data-p="conv">Excel 转换</button>
+  <button data-p="files">产物文件</button>
+</nav>
+
+<main>
+<section class="card" id="conn-panel" hidden>
+  <h3 style="margin:0 0 10px">运行时数据库连接</h3>
+  <div class="conn-note">
+      连接信息仅发送到本机 <code>127.0.0.1</code> 服务并保存在当前进程内存中；
+      不写回 <code>config.json</code>，重启或点击“断开并清除”后失效。
+      JDBC URL 可使用 <code>{cluster}</code> 和 <code>{db}</code> 占位符，也可填写固定 URL；
+      请勿把账号密码拼进 URL，请使用下方独立输入框。
+  </div>
+  <div class="conn-grid">
+    <label for="cn-label">连接显示名称</label>
+    <input type="text" id="cn-label" value="本地连接" placeholder="例如：测试数据库">
+    <label for="cn-cluster">URL 中的 cluster 值</label>
+    <input type="text" id="cn-cluster" placeholder="URL 不含 {cluster} 时可留空">
+    <label for="cn-clusters">附加连接（可选）</label>
+    <textarea id="cn-clusters" rows="3" placeholder="每行：显示名称=cluster值&#10;例如：测试环境=test"></textarea>
+    <label for="cn-url">JDBC URL / URL模板</label>
+    <input type="text" id="cn-url" placeholder="jdbc:vendor://host:port/{db}">
+    <label for="cn-driver-class">JDBC 驱动类</label>
+    <input type="text" id="cn-driver-class" placeholder="com.vendor.jdbc.Driver">
+    <label for="cn-driver-jar">驱动 JAR 路径</label>
+    <input type="text" id="cn-driver-jar" placeholder="/path/to/database-driver.jar">
+    <label for="cn-jdk">JDK bin 目录</label>
+    <input type="text" id="cn-jdk" placeholder="/path/to/jdk/bin">
+    <label for="cn-user">用户名</label>
+    <input type="text" id="cn-user" autocomplete="off" placeholder="可留空">
+    <label for="cn-pass">密码</label>
+    <input type="password" id="cn-pass" autocomplete="new-password" placeholder="仅保存在内存">
+    <label for="cn-db">测试库名</label>
+    <input type="text" id="cn-db" placeholder="URL 不使用 {db} 时可留空">
+    <label for="cn-test-sql">只读测试 SQL</label>
+    <input type="text" id="cn-test-sql" value="SELECT 1">
+    <label for="cn-workspace">工作目录</label>
+    <input type="text" id="cn-workspace" value="." placeholder="相对路径的解析基准">
+    <label for="cn-data-dir">产物目录</label>
+    <input type="text" id="cn-data-dir" value="data">
+    <label for="cn-insecure">不安全连接确认</label>
+    <label class="chk"><input type="checkbox" id="cn-insecure"> 仅在受控网络中允许明文或关闭 TLS 的 JDBC URL</label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn pri" id="cn-apply" onclick="testAndUseConnection()">测试并使用</button>
+    <button class="btn" onclick="disconnectConnection()">断开并清除</button>
+    <button class="btn" onclick="closeTopPanels()">收起面板</button>
+    <span id="cn-status" class="env">{% if connection_state.configured %}当前已配置连接{% else %}当前未配置连接{% endif %}</span>
+  </div>
+</section>
+<section class="card" id="ai-config-panel" hidden>
+  <h3 style="margin:0 0 10px">运行时 AI 模型连接</h3>
+  <div class="conn-note">
+    支持兼容 OpenAI Chat Completions 的云端或本地模型服务。服务地址、模型名和 API Key
+    仅保存在当前进程内存，不写入配置文件；点击“清除 AI 配置”或退出程序后失效。
+    调用云端模型时，只有你主动点击“生成”或“分析”才会发送输入内容。
+  </div>
+  <div class="conn-grid">
+    <label for="ac-label">服务显示名称</label>
+    <input type="text" id="ac-label" placeholder="例如：本地模型 / 团队 AI 网关">
+    <label for="ac-url">服务地址</label>
+    <input type="text" id="ac-url" placeholder="https://example.com/v1 或 http://127.0.0.1:11434/v1">
+    <label for="ac-model">模型名称</label>
+    <input type="text" id="ac-model" placeholder="填写服务实际支持的模型 ID">
+    <label for="ac-key">API Key</label>
+    <input type="password" id="ac-key" autocomplete="new-password" placeholder="本地免鉴权服务可留空；仅保存在内存">
+    <label for="ac-timeout">超时秒数</label>
+    <input type="number" id="ac-timeout" min="10" max="180" value="60">
+    <label for="ac-insecure">内网 HTTP 确认</label>
+    <label class="chk"><input type="checkbox" id="ac-insecure"> 允许连接非本机的 HTTP 服务（内容可能明文传输）</label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn pri" id="ac-apply" onclick="testAndUseAi()">保存并测试</button>
+    <button class="btn" onclick="disconnectAi()">清除 AI 配置</button>
+    <button class="btn" onclick="closeTopPanels()">收起面板</button>
+    <span id="ac-status" class="env">{% if ai_state.configured %}当前模型：{{ ai_state.model }}{% else %}当前未配置 AI 模型{% endif %}</span>
+  </div>
+</section>
+{% if problems %}
+<details class="warnbox"><summary>环境自检发现问题（界面可用；点击查看详情）</summary>
+  <ul style="margin:5px 0 0 18px">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+  配置文件：<code>{{ config_path }}</code>
+</details>
+{% endif %}
+
+<!-- ══ AI SQL 助手 ══ -->
+<section class="page on" id="p-ai">
+  <p class="hint">用自然语言生成<b>单条只读 SQL</b>，生成后必须先核对再执行。模型不会自动连接数据库；
+    表结构仅在你主动生成时发送到所配置的 AI 服务。涉及公司数据时，请先确认公司允许使用该模型服务。</p>
+
+  <div class="ai-grid">
+    <div class="card">
+      <h3 style="margin:0 0 10px">① 描述查询需求</h3>
+      <label>例如：统计最近 7 天每天的订单数和金额，只看已支付订单</label>
+      <textarea id="ai-task" rows="7" placeholder="用中文写清楚筛选条件、统计口径、分组维度和期望字段"></textarea>
+      <div class="row" style="margin-top:10px">
+        <label>SQL 方言</label>
+        <select id="ai-dialect">
+          <option>StarRocks / MySQL</option><option>MySQL</option><option>PostgreSQL</option>
+          <option>Oracle</option><option>SQL Server</option><option>通用 SQL</option>
+        </select>
+        <button class="btn" onclick="fillAiExample()">填入脱敏示例</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px">② 提供相关表结构</h3>
+      <div class="row">
+        <label>集群</label>
+        <select id="ai-cluster">
+          {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+        <label>库</label>
+        <input type="text" id="ai-db" list="dblist" value="{{ default_db }}" style="width:150px" placeholder="库名">
+        <button class="btn" id="ai-schema-load" onclick="loadAiSchema()">从数据库读取字段</button>
+      </div>
+      <textarea id="ai-schema" rows="8" style="margin-top:10px"
+        placeholder="也可以手动粘贴脱敏后的 DDL，例如：&#10;table orders (id bigint PRIMARY KEY, paid_at datetime, amount decimal(18,2), status varchar(20))"></textarea>
+      <p class="hint" style="margin:7px 0 0">建议只提供本次查询相关的表和字段；不要提供真实数据、账号、密码或内部地址。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <button class="btn pri" id="ai-generate" onclick="generateAiSql()">✨ 生成只读 SQL</button>
+      <button class="btn" onclick="auditAiSql()">本地安全检查</button>
+      <span id="ai-model-state" class="pill {% if ai_state.configured %}safe{% else %}warning{% endif %}">
+        {% if ai_state.configured %}AI 已连接 · {{ ai_state.model }}{% else %}请先配置 AI 模型{% endif %}
+      </span>
+    </div>
+    <textarea id="ai-sql" class="dark" rows="11" style="margin-top:10px"
+      placeholder="模型生成的 SQL 会显示在这里；你也可以粘贴自己的 SQL 做本地安全检查"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" onclick="useAiSql()">放入 SQL 查询页（不自动执行）</button>
+      <button class="btn" onclick="q('#ai-sql').value=''">清空</button>
+      <span id="ai-audit" class="pill">尚未检查</span>
+    </div>
+    <div id="ai-detail" class="ai-result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 6px">③ AI 差异解释与排查建议</h3>
+    <p class="hint">粘贴<b>脱敏后的</b>比对摘要、数据库报错或统计结论。不会自动读取其他页面的数据，避免误把业务明细发送到外部模型。</p>
+    <textarea id="ai-material" rows="7" placeholder="例如：A 侧 12000 行，B 侧 11876 行；仅 A 有 124 条，差异集中在 2026-08-01……"></textarea>
+    <input type="text" id="ai-question" style="width:100%;margin-top:8px"
+      placeholder="可选：你最想确认的问题，例如“优先排查哪些同步环节？”">
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" id="ai-analyze" onclick="analyzeAiMaterial()">✨ 分析差异</button>
+    </div>
+    <div id="ai-analysis" class="ai-result" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<!-- ══ 1. SQL 查询 ══ -->
+<section class="page" id="p-sql">
+  <p class="hint">本工具强制<b>只读</b>：所有数据库调用在进入 JDBC 前都会检查单语句和危险关键字，
+    底层使用 <code>executeQuery()</code>。数据库账号仍应配置为只读最小权限。</p>
+  <div class="card">
+    <div class="row">
+      <label>集群</label>
+      <select id="sql-cluster">
+        {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <label>库</label>
+      <input type="text" id="sql-db" list="dblist" value="{{ default_db }}" style="width:120px">
+      <button class="btn" onclick="loadAllDbs('sql-db','sql-cluster')" title="从集群拉取全部库名">↻</button>
+      <label>行数上限</label>
+      <select id="sql-limit">
+        <option>500</option><option>2000</option><option>10000</option><option>50000</option>
+      </select>
+      <span class="pill safe">只读保护已强制启用</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <textarea id="sql-text" class="dark" rows="8"
+        placeholder="SELECT * FROM information_schema.tables WHERE table_schema='example_db' LIMIT 20&#10;&#10;⌘/Ctrl + Enter 执行"></textarea>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" id="sql-run" onclick="runSql()">▶ 执行 (⌘↩)</button>
+      <button class="btn" onclick="q('#sql-text').value=''">清空</button>
+      <button class="btn" onclick="exportTable('sql','查询结果')">导出结果</button>
+      <span id="sql-info" style="color:var(--mute);font-size:13px"></span>
+    </div>
+  </div>
+  <div class="tablewrap"><div class="empty" id="sql-empty">执行后在此显示结果</div>
+    <table id="sql-table" style="display:none"></table></div>
+</section>
+
+<!-- ══ 2. 表行数统计 ══ -->
+<section class="page" id="p-rows">
+  <p class="hint">统计一个库里所有表的行数。<code>information_schema</code> 缺统计信息时会显示空白，
+    可勾选兜底逐表 <code>COUNT(*)</code>（慢但准，视图会自动跳过）。</p>
+  <div class="card">
+    <div class="row">
+      <label>集群</label>
+      <select id="rc-cluster">
+        {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <label>库</label>
+      <input type="text" id="rc-db" list="dblist" value="{{ default_db }}" style="width:120px">
+      <button class="btn" onclick="loadAllDbs('rc-db','rc-cluster')" title="从集群拉取全部库名填充下拉">加载所有库 ↻</button>
+      <label class="chk"><input type="checkbox" id="rc-fb"> 行数为空时兜底 COUNT(*)</label>
+      <button class="btn pri" id="rc-run" onclick="runRowCount()">▶ 开始统计</button>
+      <button class="btn" onclick="exportTable('rc','表行数')">导出</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label>对应关系</label>
+      <select id="rc-map-group" style="min-width:280px"><option value="">—— 选一组已存的对应关系 ——</option></select>
+      <button class="btn" id="rc-map-run" onclick="applyRcMapping()" disabled
+              title="先在上方跑一次「开始统计」拿到 A 侧清单，再点这里套对应关系">套对应关系</button>
+      <span id="rc-map-info" style="color:var(--mute);font-size:13px"></span>
+    </div>
+  </div>
+  <div class="stats" id="rc-stats"></div>
+  <div class="stats" id="rc-stats-b" style="display:none"></div>
+  <div class="tablewrap"><div class="empty" id="rc-empty">统计后在此显示</div>
+    <table id="rc-table" style="display:none"></table></div>
+  <div class="card" style="margin-top:12px;display:none" id="rc-cmp-box">
+    <div class="row">
+      <label><b>同库内两表行数对比</b></label>
+      <span style="color:var(--mute);font-size:13px">表A </span>
+      <select id="rc-cmp-a" style="min-width:200px"><option value="">—— 选表 ——</option></select>
+      <span style="color:var(--mute);font-size:13px">表B </span>
+      <select id="rc-cmp-b" style="min-width:200px"><option value="">—— 选表 ——</option></select>
+      <button class="btn" onclick="cmpTwoTables()">对比</button>
+      <span id="rc-cmp-out" style="font-size:13px;font-weight:600"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 3. 库数据对比 ══ -->
+<section class="page" id="p-cmp">
+  <p class="hint">跨环境迁移、备份核验、源端到目标端的数据核对都可使用。
+    <b>库表对比</b>比整库的表清单与行数；<b>自定义对比</b>处理两边表名不一样的情况（会先换算表名再对齐）；
+    <b>单表数据对比</b>钻到一张表里，看字段结构、行数和具体哪几条数据不一样。</p>
+
+  <div class="card">
+    <div class="row">
+      <label style="width:34px"><b>A 侧</b></label>
+      <select id="cp-clusterA">
+        {% for c in clusters %}<option>{{ c }}</option>{% endfor %}
+      </select>
+      <input type="text" id="cp-dbA" list="dblist" value="{{ default_db }}" style="width:170px" placeholder="库名">
+      <button class="btn" onclick="loadAllDbs('cp-dbA','cp-clusterA')" title="从集群拉取全部库名">↻ 库名</button>
+      <span style="color:var(--mute);font-size:13px" id="cp-cntA"></span>
+    </div>
+    <div class="row">
+      <label style="width:34px"><b>B 侧</b></label>
+      <select id="cp-clusterB">
+        {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <input type="text" id="cp-dbB" list="dblist" value="{{ default_db }}" style="width:170px" placeholder="库名">
+      <button class="btn" onclick="loadAllDbs('cp-dbB','cp-clusterB')" title="从集群拉取全部库名">↻ 库名</button>
+      <span style="color:var(--mute);font-size:13px" id="cp-cntB"></span>
+    </div>
+    <div class="row">
+      <label>表名映射</label>
+      <select id="cp-mode" onchange="cpModeChange()" style="min-width:260px">
+        <option value="same">同名对比（两边表名一致）</option>
+        <option value="source_to_target">源库 → 目标库：前缀_&lt;源库名&gt;_&lt;表名&gt;</option>
+        <option value="target_to_source">目标库 → 源库：去掉目标前缀</option>
+        <option value="affix">前后缀增删（例如备份表的 _old）</option>
+        <option value="regex">正则替换（自己写规则）</option>
+        <option value="pairs">手工指定表名对</option>
+        <option value="saved">用已存的对应关系（在「表对应关系」页维护）</option>
+      </select>
+      <button class="btn" onclick="previewMapping()">试跑映射（不比数据）</button>
+      <span id="cp-map-desc" style="color:var(--mute);font-size:13px"></span>
+    </div>
+    <div class="row" id="cp-affix-box" style="display:none">
+      <label>去前缀</label><input type="text" id="cp-pdel" style="width:110px" placeholder="stg_">
+      <label>加前缀</label><input type="text" id="cp-padd" style="width:110px" placeholder="target_">
+      <label>去后缀</label><input type="text" id="cp-sdel" style="width:110px">
+      <label>加后缀</label><input type="text" id="cp-sadd" style="width:110px" placeholder="_old">
+    </div>
+    <div class="row" id="cp-regex-box" style="display:none">
+      <label>正则</label><input type="text" id="cp-pat" style="width:220px" placeholder="^stg_(.*)$">
+      <label>替换为</label><input type="text" id="cp-rep" style="width:220px" placeholder="target_\1">
+      <span style="color:var(--mute);font-size:12px">用 \1 引用捕获组</span>
+    </div>
+    <div class="row" id="cp-pairs-box" style="display:none;align-items:flex-start">
+      <label style="padding-top:6px">表名对</label>
+      <textarea id="cp-pairs" rows="4"
+        placeholder="一行一对，支持 => 、-> 、逗号、Tab 分隔：&#10;source_table_a => target_table_a&#10;source_table_b, target_table_b"></textarea>
+    </div>
+    <div class="row">
+      <button class="btn pri" id="cp-run" onclick="runDbCompare()">▶ 开始对比</button>
+      <button class="btn" onclick="exportDbCompare()">导出全部（5页）</button>
+      <span style="color:var(--mute);font-size:12px">对比结果里点表名 → 直接跳到单表数据对比</span>
+    </div>
+  </div>
+
+  <div id="cp-map-preview"></div>
+  <div class="stats" id="cp-stats"></div>
+  <div class="tablewrap"><div class="empty" id="cp-empty">对比后在此显示</div>
+    <table id="cp-table" style="display:none"></table></div>
+</section>
+
+<!-- ══ 4. 单表数据对比 ══ -->
+<section class="page" id="p-one">
+  <p class="hint">钻到一张表里：<b>先比字段结构</b>（哪些字段只有一边有、类型对不对）→
+    <b>再比行数</b> → <b>最后按主键对齐比明细</b>，直接告诉你是哪几条、哪个字段不一样。
+    长表名无需手工重复输入，填 A 侧表名后可按映射推导 B 侧。</p>
+  <div class="card">
+    <div class="row">
+      <label style="width:34px"><b>A 侧</b></label>
+      <select id="ot-clusterA">
+        {% for c in clusters %}<option>{{ c }}</option>{% endfor %}
+      </select>
+      <input type="text" id="ot-dbA" list="dblist" style="width:170px" placeholder="库名">
+      <input type="text" id="ot-tableA" list="ot-listA" style="width:330px" placeholder="表名">
+      <button class="btn" onclick="loadTables('A')" title="拉取该库的表清单填充下拉">↻ 表名</button>
+    </div>
+    <div class="row">
+      <label style="width:34px"><b>B 侧</b></label>
+      <select id="ot-clusterB">
+        {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <input type="text" id="ot-dbB" list="dblist" style="width:170px" placeholder="库名">
+      <input type="text" id="ot-tableB" list="ot-listB" style="width:330px" placeholder="表名（留空按映射自动推）">
+      <button class="btn" onclick="loadTables('B')" title="拉取该库的表清单填充下拉">↻ 表名</button>
+    </div>
+    <div class="row">
+      <label>表名映射</label>
+      <select id="ot-mode" style="min-width:260px">
+        <option value="same">同名（两边表名一致）</option>
+        <option value="source_to_target">源库 → 目标库：前缀_&lt;A库名&gt;_&lt;表名&gt;</option>
+        <option value="target_to_source">目标库 → 源库：去掉目标前缀</option>
+      </select>
+      <button class="btn" onclick="deriveTableB()">按映射推 B 侧 →</button>
+      <span id="ot-derive" style="color:var(--mute);font-size:13px"></span>
+    </div>
+    <div class="row">
+      <label>明细主键</label>
+      <input type="text" id="ot-keys" style="width:250px" placeholder="如 id 或 order_id,created_at（留空只比结构和行数）">
+      <label>取数条数</label>
+      <select id="ot-limit"><option>500</option><option>1000</option><option>2000</option><option>5000</option></select>
+    </div>
+    <div class="row">
+      <label>A 侧 WHERE</label>
+      <input type="text" id="ot-whereA" style="flex:1;min-width:220px" placeholder="可选，如 is_current=1 and is_active=1">
+    </div>
+    <div class="row">
+      <label>B 侧 WHERE</label>
+      <input type="text" id="ot-whereB" style="flex:1;min-width:220px" placeholder="留空则与 A 侧同条件">
+    </div>
+    <div class="row">
+      <button class="btn pri" id="ot-run" onclick="runTableCompare()">▶ 开始对比</button>
+      <button class="btn" onclick="exportTableCompare()">导出对比报告</button>
+      <span id="ot-info" style="color:var(--mute);font-size:13px"></span>
+    </div>
+  </div>
+  <div id="ot-verdict"></div>
+  <div class="stats" id="ot-stats"></div>
+  <div class="tablewrap"><div class="empty" id="ot-empty">对比后在此显示</div>
+    <table id="ot-table" style="display:none"></table></div>
+</section>
+
+<!-- ══ SQL 排查工作台 ══ -->
+<section class="page" id="p-probe">
+  <p class="hint">新老脚本对照排查：<b>第一层只比逻辑</b>（不连库，秒出，标风险）→
+    <b>第二层进库比明细</b>（按业务时间切 500 条，逐主键找差异并出日志）。
+    另附长 SQL 拆分、依赖表分层、辅助排查 SQL。</p>
+
+  <div class="card">
+    <div class="row">
+      <label>脚本A 名称</label><input type="text" id="pb-na" value="旧脚本" style="width:110px">
+      <label>脚本B 名称</label><input type="text" id="pb-nb" value="新脚本" style="width:110px">
+      <button class="btn" onclick="pbFill()">填入示例</button>
+      <button class="btn" onclick="q('#pb-a').value='';q('#pb-b').value=''">清空</button>
+    </div>
+    <div class="row" style="margin-top:8px;align-items:flex-start">
+      <div style="flex:1;min-width:300px">
+        <label id="pb-la">脚本 A</label>
+        <textarea id="pb-a" class="dark" rows="11" placeholder="粘贴旧版脚本 SQL"></textarea>
+      </div>
+      <div style="flex:1;min-width:300px">
+        <label id="pb-lb">脚本 B</label>
+        <textarea id="pb-b" class="dark" rows="11" placeholder="粘贴新版脚本 SQL"></textarea>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label>业务背景 / 预期变化</label>
+      <input type="text" id="pb-context" style="flex:1;min-width:320px"
+        placeholder="例如：新版只想排除已删除明细，订单主表口径应保持不变（可留空，但填写后推理更准确）">
+      <label>方言</label>
+      <select id="pb-dialect"><option>StarRocks / MySQL</option><option>MySQL</option>
+        <option>PostgreSQL</option><option>Oracle</option><option>SQL Server</option><option>通用 SQL</option></select>
+    </div>
+  </div>
+
+  <div class="subnav">
+    <button class="on" data-s="logic">① 逻辑对比</button>
+    <button data-s="data">② 数据层对比</button>
+    <button data-s="split">③ 长SQL拆分</button>
+    <button data-s="lin">④ 依赖表 & 辅助SQL</button>
+  </div>
+
+  <!-- ① 逻辑对比 -->
+  <div class="sub on" id="s-logic">
+    <div class="card"><div class="row">
+      <button class="btn pri" id="pb-logic-run" onclick="runLogic()">▶ 比较逻辑（不连库）</button>
+      <button class="btn" id="pb-ai-run" onclick="runAiLogic()">✨ AI 推理分析</button>
+      <span class="pill warning">规则先给证据，AI再解释影响</span>
+      <span id="pb-logic-info" style="color:var(--mute);font-size:13px"></span>
+    </div></div>
+    <div id="pb-ai-reason"></div>
+    <div id="pb-risks"></div>
+    <div class="stats" id="pb-logic-stats"></div>
+    <div class="tablewrap"><div class="empty" id="pl-empty">点上方按钮开始比较</div>
+      <table id="pl-table" style="display:none"></table></div>
+  </div>
+
+  <!-- ② 数据层对比 -->
+  <div class="sub" id="s-data">
+    <div class="card">
+      <div class="row">
+        <button class="btn" id="pb-prep" onclick="runPrepare()">① 识别日期与主键</button>
+        <span id="pb-prep-info" style="color:var(--mute);font-size:13px"></span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>业务时间字段</label>
+        <select id="pb-tcol" style="min-width:200px"><option value="">（不切片，直接取前N条）</option></select>
+        <label>起</label><input type="date" id="pb-start">
+        <label>止</label><input type="date" id="pb-end">
+        <label>条数</label>
+        <select id="pb-limit"><option>500</option><option>200</option><option>100</option><option>50</option></select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>明细主键</label>
+        <select id="pb-pkpick" style="min-width:230px" onchange="pickPk()">
+          <option value="">（先点上面识别，或手填）</option></select>
+        <input type="text" id="pb-keys" placeholder="如 id 或 order_id,created_at（多个用英文逗号）" style="width:230px">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>A集群</label><select id="pb-ca">
+          {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+        <input type="text" id="pb-dba" list="dblist" value="{{ default_db }}" style="width:90px">
+        <label>B集群</label><select id="pb-cb">
+          {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+        <input type="text" id="pb-dbb" list="dblist" value="{{ default_db }}" style="width:90px">
+      </div>
+      <div id="pb-pkhint"></div>
+      <div class="row" style="margin-top:8px">
+        <label class="chk" title="按业务时间把范围切成每片≤500行，逐片取完拼接，突破单次500行限制">
+          <input type="checkbox" id="pb-full"> <b>全量分片</b>（比完整个时间段的全部数据）</label>
+        <button class="btn" onclick="planScan()">看分片方案</button>
+        <span id="pb-plan-info" style="color:var(--mute);font-size:13px"></span>
+      </div>
+      <div id="pb-plan"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn pri" id="pb-data-run" onclick="runDataCmp()">② ▶ 进库比明细</button>
+        <button class="btn" onclick="exportProbeLog()">导出排查日志</button>
+        <button class="btn" onclick="showExecuted()">看实际执行的SQL</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:62px">差异跟踪</label>
+        <input type="text" id="pb-archive-name" placeholder="文件名（默认：差异跟踪）"
+               value="差异跟踪" style="width:180px">
+        <input type="text" id="pb-archive-slice"
+               placeholder="时间片标签（如 2026-01~03）" style="width:190px">
+        <button class="btn" id="pb-archive-run" onclick="accumulateToArchive()" disabled
+                title="先在上方跑一次「进库比明细」，再点这里把本轮差异累入档案">③ 累入档案</button>
+        <span id="pb-archive-info" style="color:var(--mute);font-size:13px"></span>
+      </div>
+    </div>
+    <div id="pb-verdict"></div>
+    <div id="pb-scan"></div>
+    <div class="stats" id="pb-data-stats"></div>
+    <div class="tablewrap"><div class="empty" id="pd-empty">比对后在此显示</div>
+      <table id="pd-table" style="display:none"></table></div>
+  </div>
+
+  <!-- ③ 长SQL拆分 -->
+  <div class="sub" id="s-split">
+    <div class="card"><div class="row">
+      <label>拆哪个</label>
+      <select id="pb-which"><option value="a">脚本 A</option><option value="b">脚本 B</option></select>
+      <button class="btn pri" onclick="runSplit()">▶ 拆分</button>
+      <span id="pb-split-info" style="color:var(--mute);font-size:13px"></span>
+    </div></div>
+    <div id="pb-segs"></div>
+  </div>
+
+  <!-- ④ 依赖表 & 辅助SQL -->
+  <div class="sub" id="s-lin">
+    <div class="card"><div class="row">
+      <label>分析哪个</label>
+      <select id="pb-which2"><option value="a">脚本 A</option><option value="b">脚本 B</option></select>
+      <label>主键(可选)</label><input type="text" id="pb-pk" placeholder="用于生成倍乘检测SQL" style="width:180px">
+      <button class="btn pri" onclick="runLineage()">▶ 分析</button>
+    </div></div>
+    <div id="pb-lineage"></div>
+    <div id="pb-probes"></div>
+  </div>
+</section>
+
+<!-- ══ 表对应关系 ══ -->
+<section class="page" id="p-map">
+  <p class="hint">当源系统按模块拆成多个库、目标端集中在一个库时，<b>点「连库全库发现」批量识别对应关系</b>——
+    根据可配置前缀和源库名拆解目标表名（<code>前缀_&lt;源库名&gt;_&lt;表名&gt;</code>）。
+    规则不规则的（改过名、拆表、并表）在下面手工补，存下来后「库数据对比」选<b>「用已存的对应关系」</b>就能直接用。</p>
+
+  <div class="card">
+    <div class="row">
+      <label>连库发现</label>
+      <select id="mp-source" style="min-width:150px">
+        {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <span style="color:var(--mute)">→</span>
+      <select id="mp-target" style="min-width:190px">
+        {% for c in clusters %}<option {% if c==default_cluster %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      <input type="text" id="mp-target-db" list="dblist" style="width:100px" value="" placeholder="目标库名">
+      <input type="text" id="mp-prefix" style="width:90px" value="target_" placeholder="表名前缀">
+      <button class="btn pri" id="mp-run" onclick="mpDiscover()">连库全库发现</button>
+    </div>
+    <div id="mp-disc"></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label>已存分组</label>
+      <select id="mp-group" style="flex:1;min-width:320px" onchange="mpLoad()"></select>
+      <button class="btn" onclick="mpGroups()">↻ 刷新</button>
+      <span id="mp-ginfo" style="color:var(--mute);font-size:13px"></span>
+    </div>
+    <div class="row">
+      <label>筛选</label>
+      <select id="mp-db" style="min-width:220px" onchange="mpLoad()"><option value="">全部源库</option></select>
+      <input type="text" id="mp-kw" style="width:230px" placeholder="表名关键词，回车搜">
+      <button class="btn" onclick="mpLoad()">🔍 查</button>
+      <span id="mp-info" style="color:var(--mute);font-size:13px"></span>
+    </div>
+    <div class="tablewrap"><div class="empty" id="mp-empty">选一组对应关系后在此显示</div>
+      <table id="mp-table" style="display:none"></table></div>
+  </div>
+
+  <div class="card">
+    <p class="hint" style="margin-top:0">手工补对应关系。一行一对，支持 <code>=&gt;</code>
+      <code>-&gt;</code> <code>→</code> 逗号 制表符 竖线 分隔；<code>#</code> 开头是注释。
+      左边写 A 侧表名、右边写 B 侧表名，库名前缀写了也会自动去掉。</p>
+    <div class="row">
+      <label>存到分组</label>
+      <input type="text" id="mp-key" style="flex:1;min-width:340px"
+             placeholder="留空则存到上面选中的分组；也可自己起一个名字">
+    </div>
+    <textarea id="mp-text" style="width:100%;height:120px;font-family:Menlo,monospace;font-size:12px"
+      placeholder="# 一行一对，例如：&#10;source_table => target_source_table&#10;old_table_v1 -> new_table_v3"></textarea>
+    <div class="row">
+      <button class="btn pri" onclick="mpEdit(false)">＋ 新增/合并</button>
+      <button class="btn" onclick="mpEdit(true)">整组替换</button>
+      <button class="btn" onclick="mpDrop()">－ 删除勾选的</button>
+      <span id="mp-edit" style="color:var(--mute);font-size:13px"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 文件比对（Excel / CSV）══ -->
+<section class="page" id="p-xd">
+  <p class="hint">两个 Excel / CSV 逐格比。<b>主键允许重复</b>——同一主键两边各有多行时，
+    按内容做最优配对（总差异最小），不会因为行序不同就报出一堆假差异。
+    只有<b>同名列</b>参与对比，列名不一致的会单独列出来。</p>
+  <div class="card">
+    <div class="row">
+      <label style="width:34px"><b>文件 A</b></label>
+      <input type="file" id="xd-fa" accept=".xlsx,.xls,.csv,.txt,.tsv">
+      <label style="width:34px"><b>文件 B</b></label>
+      <input type="file" id="xd-fb" accept=".xlsx,.xls,.csv,.txt,.tsv">
+      <button class="btn pri" onclick="xdUpload()">上传并读列名</button>
+      <span id="xd-up" style="color:var(--mute);font-size:13px"></span>
+    </div>
+    <div id="xd-cols"></div>
+    <div class="row" id="xd-keyrow" style="display:none">
+      <label>主键列</label>
+      <input type="text" id="xd-keys" style="flex:1;min-width:260px"
+             placeholder="多个用英文逗号分隔">
+      <span id="xd-keyhint" style="color:var(--mute);font-size:12px"></span>
+    </div>
+    <div class="row" id="xd-optrow" style="display:none">
+      <label>比对选项</label>
+      <label class="chk"><input type="checkbox" id="xd-case"> 区分大小写</label>
+      <label class="chk"><input type="checkbox" id="xd-trim" checked> 去首尾空格</label>
+      <label class="chk"><input type="checkbox" id="xd-null" checked> NULL 与空值算相同</label>
+      <label class="chk"><input type="checkbox" id="xd-num"> 严格比数值文本
+        <span style="color:var(--mute)">（不勾则 125.00 = 125）</span></label>
+    </div>
+    <div class="row" id="xd-runrow" style="display:none">
+      <button class="btn pri" id="xd-run" onclick="xdRun()">▶ 开始比对</button>
+      <button class="btn" onclick="xdExport()">导出完整报告</button>
+      <span id="xd-info" style="color:var(--mute);font-size:13px"></span>
+    </div>
+  </div>
+  <div id="xd-verdict"></div>
+  <div id="xd-stats"></div>
+  <div id="xd-out"></div>
+</section>
+
+<!-- ══ Excel 转换 ══ -->
+<section class="page" id="p-conv">
+  <p class="hint">Excel 转 INSERT 语句 / PDF / Word。转 INSERT 需同时给建表语句，
+    按 DDL 字段类型决定加不加引号。</p>
+
+  <div class="subnav">
+    <button class="on" data-s="ins">Excel → INSERT</button>
+    <button data-s="doc">Excel → PDF / Word</button>
+  </div>
+
+  <div class="sub on" id="s-ins">
+    <div class="card">
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:320px">
+          <label>① 目标表建表语句（CREATE TABLE …）</label>
+          <textarea id="ci-ddl" class="dark" rows="10"
+            placeholder="CREATE TABLE example_table (&#10;  `id` varchar(50) NOT NULL COMMENT '主键',&#10;  `amount` decimal(18,4) NULL&#10;) ..."></textarea>
+        </div>
+        <div style="flex:1;min-width:260px">
+          <label>② Excel 文件（表头需与字段名对应）</label>
+          <input type="file" id="ci-file" accept=".xlsx,.xlsm" style="width:100%"
+            onchange="probeSheets('ci')">
+          <div style="margin-top:8px"><label>工作表</label>
+            <select id="ci-sheet" style="width:100%"><option value="">（自动选数据最多的）</option></select></div>
+          <div id="ci-probe"></div>
+          <div style="margin-top:10px">
+            <label>每条 INSERT 的行数</label>
+            <select id="ci-batch"><option>500</option><option>200</option><option>1000</option><option>1</option></select>
+          </div>
+          <button class="btn pri" id="ci-run" onclick="runExcel2Insert()" style="margin-top:10px">③ ▶ 生成 INSERT</button>
+        </div>
+      </div>
+    </div>
+    <div class="stats" id="ci-stats"></div>
+    <div id="ci-warn"></div>
+    <div class="card" style="display:none" id="ci-out">
+      <div class="row"><b>生成结果预览</b>
+        <span id="ci-file-info" style="color:var(--mute);font-size:13px;margin-left:8px"></span></div>
+      <textarea id="ci-sql" class="dark" rows="14" readonly style="margin-top:6px"></textarea>
+    </div>
+  </div>
+
+  <div class="sub" id="s-doc">
+    <div class="card">
+      <div class="row">
+        <label>Excel 文件</label><input type="file" id="cd-file" accept=".xlsx,.xlsm"
+          onchange="probeSheets('cd')">
+        <label>工作表</label>
+        <select id="cd-sheet" style="min-width:150px"><option value="">（自动选数据最多的）</option></select>
+        <label>格式</label>
+        <select id="cd-fmt"><option value="pdf">PDF</option><option value="word">Word (.docx)</option></select>
+        <label>行数上限</label>
+        <select id="cd-rows" title="PDF 渲染是纯 Python 实现，每千行约 40 秒">
+          <option value="800">800 行（约10秒）</option>
+          <option value="2000">2000 行（约80秒）</option>
+          <option value="5000">5000 行（约4分钟）</option>
+          <option value="100000">不限（很慢，慎用）</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="cd-land" checked> 横向纸张</label>
+        <label>标题(Word)</label><input type="text" id="cd-title" placeholder="可留空" style="width:130px">
+        <button class="btn pri" id="cd-run" onclick="runExcel2Doc()">▶ 转换</button>
+      </div>
+      <div id="cd-probe"></div>
+      <p class="hint" style="margin:8px 0 0">本机没装 LibreOffice/Office，转换由纯 Python 完成：
+        PDF 用系统中文字体嵌入并自动分页，Word 生成带表头底色的表格。
+        选完文件会先探测工作表——<b>转出来是空的多半是数据在别的工作表上</b>。</p>
+    </div>
+    <div id="cd-out"></div>
+  </div>
+</section>
+
+<!-- ══ 转 Excel（文本 / 图片）══ -->
+<section class="page" id="p-t2x">
+  <p class="hint">文本或图片转 Excel，自动优化格式（表头蓝底白字、冻结首行、边框、列宽按内容自适应）。
+    图片走 macOS 原生 OCR，按文字坐标还原表格行列。</p>
+
+  <div class="subnav">
+    <button class="on" data-s="txt">文本 → Excel</button>
+    <button data-s="img">图片 → Excel</button>
+  </div>
+
+  <div class="sub on" id="s-txt">
+  <div class="card">
+    <div class="row">
+      <label>分隔符</label>
+      <select id="tx-delim">
+        <option value="auto">自动识别</option><option value="tab">Tab</option>
+        <option value="pipe">竖线 |</option><option value="comma">逗号 ,</option>
+        <option value="space">连续空格</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="tx-head" checked> 首行是表头</label>
+      <label>文件名</label>
+      <input type="text" id="tx-name" value="文本转Excel" style="width:180px">
+    </div>
+    <div class="row" style="margin-top:10px">
+      <textarea id="tx-text" rows="9" placeholder="表名&#9;行数&#10;example_a&#9;1584&#10;example_b&#9;78402"></textarea>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" onclick="runText2Rows()">▶ 预览</button>
+      <button class="btn" onclick="exportText2Xlsx()">生成 Excel</button>
+      <button class="btn" onclick="q('#tx-text').value=''">清空</button>
+      <span id="tx-info" style="color:var(--mute);font-size:13px"></span>
+    </div>
+  </div>
+  </div>
+
+  <div class="sub" id="s-img">
+    <div class="card">
+      <div class="row">
+        <label>图片</label><input type="file" id="im-file" accept="image/png,image/jpeg,image/webp">
+        <label>列合并强度</label>
+        <select id="im-fill" title="过滤稀疏列：截图里的水印、翻页控件会各占一个稀疏列">
+          <option value="0.15">标准（推荐）</option>
+          <option value="0.05">保留更多列</option>
+          <option value="0.3">更激进合并</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="im-head" checked> 首行是表头</label>
+        <label>文件名</label><input type="text" id="im-name" value="图片转Excel" style="width:150px">
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn pri" id="im-run" onclick="runImg2Rows()">▶ 识别</button>
+        <button class="btn" onclick="exportImg2Xlsx()">生成 Excel</button>
+        <span id="im-info" style="color:var(--mute);font-size:13px"></span>
+      </div>
+      <div id="im-warn"></div>
+    </div>
+    <div class="tablewrap"><div class="empty" id="im-empty">识别后在此显示，可先核对再导出</div>
+      <table id="im-table" style="display:none"></table></div>
+  </div>
+
+  <div class="tablewrap" id="tx-wrap"><div class="empty" id="tx-empty">预览后在此显示</div>
+    <table id="tx-table" style="display:none"></table></div>
+</section>
+
+<!-- ══ 产物文件 ══ -->
+<section class="page" id="p-files">
+  <p class="hint">所有导出的 Excel / CSV 都落在 <code>{{ data_dir }}</code>，点文件名下载。</p>
+  <div class="card"><button class="btn" onclick="loadFiles()">刷新列表</button></div>
+  <div class="tablewrap"><div class="empty" id="fl-empty">点刷新加载</div>
+    <table id="fl-table" style="display:none"></table></div>
+</section>
+</main>
+
+<datalist id="dblist">{% for d in common_dbs %}<option value="{{ d }}">{% endfor %}</datalist>
+<datalist id="alldblist"></datalist>
+<datalist id="ot-listA"></datalist>
+<datalist id="ot-listB"></datalist>
+
+<footer>
+  <span class="spin" id="spin"></span>
+  <span id="msg">就绪</span>
+  <span style="margin-left:auto">产物目录 {{ data_dir }}</span>
+</footer>
+
+<script>
+const q = s => document.querySelector(s);
+const qa = s => [...document.querySelectorAll(s)];
+const SESSION_TOKEN = {{ session_token|tojson }};
+const ST = {};   // 各页最近一次结果，供导出复用
+// 抽成常量：在模板字符串里内联写对象字面量会和 Jinja2 的变量语法撞车
+const RISK_ICON = {high:'🔴', mid:'🟠', low:'🟡'};
+
+/* ── 基础设施 ── */
+function say(m, kind=''){ const e=q('#msg'); e.textContent=m; e.className=kind; }
+function busy(on){ q('#spin').classList.toggle('on', on); }
+async function post(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json',
+    'X-Toolbox-Token':SESSION_TOKEN},
+    body: JSON.stringify(body)});
+  return r.json();
+}
+function toggleConnectionPanel(){
+  const panel=q('#conn-panel'), opening=panel.hidden;
+  q('#ai-config-panel').hidden=true;
+  panel.hidden=!opening;
+  if(opening){ window.scrollTo({top:0,behavior:'smooth'}); q('#cn-label').focus(); }
+}
+async function testAndUseConnection(){
+  const required=['#cn-url','#cn-driver-class','#cn-driver-jar','#cn-jdk'];
+  if(required.some(s=>!q(s).value.trim())) return alert('请填写 JDBC URL、驱动类、驱动 JAR 和 JDK bin');
+  const btn=q('#cn-apply'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 正在测试'; busy(true); say('正在测试数据库连接…');
+  try{
+    const r=await post('/api/connection/test',{
+      label:q('#cn-label').value.trim(), cluster:q('#cn-cluster').value.trim(),
+      cluster_profiles:q('#cn-clusters').value,
+      url_template:q('#cn-url').value.trim(), driver_class:q('#cn-driver-class').value.trim(),
+      driver_jar:q('#cn-driver-jar').value.trim(), jdk_bin:q('#cn-jdk').value.trim(),
+      username:q('#cn-user').value, password:q('#cn-pass').value,
+      db:q('#cn-db').value.trim(), test_sql:q('#cn-test-sql').value.trim()||'SELECT 1',
+      workspace:q('#cn-workspace').value.trim()||'.', data_dir:q('#cn-data-dir').value.trim()||'data',
+      allow_insecure:q('#cn-insecure').checked,
+      apply:true
+    });
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#cn-pass').value=''; say(r.message,'ok');
+    alert(r.message+'。页面将刷新并加载新的连接。'); location.reload();
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+async function disconnectConnection(){
+  const r=await post('/api/connection/disconnect',{});
+  if(!r.ok) return alert(r.msg);
+  q('#cn-pass').value=''; say(r.message,'ok'); location.reload();
+}
+
+/* AI 配置与助手 */
+function toggleAiConfigPanel(){
+  const panel=q('#ai-config-panel'), opening=panel.hidden;
+  q('#conn-panel').hidden=true;
+  panel.hidden=!opening;
+  if(opening){ window.scrollTo({top:0,behavior:'smooth'}); q('#ac-url').focus(); }
+}
+async function testAndUseAi(){
+  if(!q('#ac-url').value.trim() || !q('#ac-model').value.trim())
+    return alert('请填写 AI 服务地址和模型名称');
+  const btn=q('#ac-apply'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 正在测试'; busy(true); say('正在测试 AI 模型连接…');
+  try{
+    const r=await post('/api/ai/config',{
+      label:q('#ac-label').value.trim(), base_url:q('#ac-url').value.trim(),
+      model:q('#ac-model').value.trim(), api_key:q('#ac-key').value,
+      timeout:+q('#ac-timeout').value||60, allow_insecure:q('#ac-insecure').checked,
+      test:true
+    });
+    q('#ac-key').value='';
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#ac-status').textContent='当前模型：'+r.ai.model;
+    q('#ai-model-state').textContent='AI 已连接 · '+r.ai.model;
+    q('#ai-model-state').className='pill safe';
+    say(r.message,'ok'); alert(r.message+'（配置仅保存在本次运行内存中）');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+async function disconnectAi(){
+  const r=await post('/api/ai/disconnect',{});
+  if(!r.ok) return alert(r.msg);
+  q('#ac-key').value=''; q('#ac-status').textContent='当前未配置 AI 模型';
+  q('#ai-model-state').textContent='请先配置 AI 模型';
+  q('#ai-model-state').className='pill warning'; say(r.message,'ok');
+}
+function fillAiExample(){
+  q('#ai-task').value='统计最近 7 天每天已支付订单的订单数、去重用户数和支付金额，按日期升序，只返回 100 行。';
+  q('#ai-schema').value='database demo\ntable orders (id bigint PRIMARY KEY, user_id bigint, paid_at datetime, amount decimal(18,2), status varchar(20))';
+}
+async function loadAiSchema(){
+  const db=q('#ai-db').value.trim();
+  if(!db) return alert('请填写库名');
+  const btn=q('#ai-schema-load'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 读取中'; busy(true); say('正在读取字段元数据…');
+  try{
+    const r=await post('/api/ai/schema',{cluster:q('#ai-cluster').value,db,table_limit:30});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#ai-schema').value=r.schema; say(r.note,'ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+function renderAiAudit(a){
+  const e=q('#ai-audit');
+  e.textContent=a.summary; e.className='pill '+a.level;
+  const issues=(a.issues||[]).map(x=>
+    `<div class="risk ${x.level==='blocked'?'high':x.level==='warning'?'mid':'low'}"><b>${x.level==='blocked'?'已拦截':'提示'}</b><div class="d">${esc(x.message)}</div></div>`).join('');
+  return issues || '<div class="verdict ok"><b>静态检查通过</b>未发现写操作、多语句或未替换变量。</div>';
+}
+async function auditAiSql(){
+  const sql=q('#ai-sql').value.trim();
+  if(!sql) return alert('请先生成或粘贴 SQL');
+  const r=await post('/api/ai/audit',{sql});
+  if(!r.ok) return alert(r.msg);
+  q('#ai-detail').innerHTML=renderAiAudit(r.audit);
+  say(r.audit.summary,r.audit.safe?'ok':'err');
+}
+async function generateAiSql(){
+  const task=q('#ai-task').value.trim();
+  if(!task) return alert('请描述查询需求');
+  if(!confirm('将把查询需求和表结构发送到你配置的 AI 服务。\n请确认内容已脱敏且符合公司规定。')) return;
+  const btn=q('#ai-generate'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 生成中'; busy(true); say('AI 正在生成只读 SQL…');
+  try{
+    const r=await post('/api/ai/generate',{task,schema:q('#ai-schema').value,
+      dialect:q('#ai-dialect').value});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#ai-sql').value=r.sql;
+    let html=renderAiAudit(r.audit);
+    if(r.explanation) html+=`<div class="card"><b>生成说明</b><div>${esc(r.explanation)}</div></div>`;
+    if(r.assumptions?.length) html+=`<div class="card"><b>假设</b><ul>${r.assumptions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    if(r.warnings?.length) html+=`<div class="card"><b>模型提示</b><ul>${r.warnings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    q('#ai-detail').innerHTML=html;
+    say(r.audit.safe?'AI 已生成，等待你核对':'生成结果被只读检查拦截，请勿执行',r.audit.safe?'ok':'err');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+function useAiSql(){
+  const sql=q('#ai-sql').value.trim();
+  if(!sql) return alert('当前没有 SQL');
+  q('#sql-text').value=sql;
+  const tab=qa('nav button').find(x=>x.dataset.p==='sql');
+  if(tab) tab.click();
+  q('#sql-text').focus(); say('已放入 SQL 查询页，请核对后手动执行','ok');
+}
+async function analyzeAiMaterial(){
+  const material=q('#ai-material').value.trim();
+  if(!material) return alert('请粘贴脱敏后的分析材料');
+  if(!confirm('将把这段分析材料发送到你配置的 AI 服务。\n请确认不含业务明细、账号、地址等敏感信息。')) return;
+  const btn=q('#ai-analyze'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 分析中'; busy(true); say('AI 正在分析差异…');
+  try{
+    const r=await post('/api/ai/analyze',{material,question:q('#ai-question').value.trim()});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    const block=(title,items)=>items?.length?`<div class="card"><b>${title}</b><ol>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`:'';
+    q('#ai-analysis').innerHTML=`<div class="verdict warn"><b>分析结论</b>${esc(r.summary)}</div>`+
+      block('可能原因',r.possible_causes)+block('建议排查顺序',r.next_steps)+block('结论边界',r.limits);
+    say('AI 分析完成，请结合实际系统验证','ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+/* 长任务：发起 → 轮询进度 */
+async function runJob(url, body, btn, label){
+  const old = btn ? btn.textContent : null;
+  if(btn){ btn.disabled=true; btn.textContent='⏳ '+label; }
+  busy(true);
+  try{
+    const st = await post(url, body);
+    if(!st.ok){ say(st.msg, 'err'); alert(st.msg); return null; }
+    while(true){
+      await new Promise(r=>setTimeout(r, 700));
+      const j = await (await fetch('/api/job/'+st.job)).json();
+      if(!j.done){ say(j.msg||'处理中…'); continue; }
+      if(!j.ok){ say(j.msg,'err'); alert(j.msg); return null; }
+      return j;
+    }
+  } finally {
+    busy(false);
+    if(btn){ btn.disabled=false; btn.textContent=old; }
+  }
+}
+/* 渲染表格；cols 可指定 {key,label,type} */
+function render(prefix, headers, rows){
+  const t = q('#'+prefix+'-table'), e = q('#'+prefix+'-empty');
+  if(!rows.length){ t.style.display='none'; e.style.display='block'; e.textContent='没有符合条件的数据'; return; }
+  e.style.display='none'; t.style.display='table';
+  const th = headers.map(h=>`<th>${esc(h)}</th>`).join('');
+  const body = rows.map(r=>'<tr>'+r.map(v=>{
+    const s = (v===null||v===undefined)?'':String(v);
+    const isNum = s!=='' && !isNaN(s) && s.trim()!=='';
+    let cls = isNum ? 'num' : '';
+    if(isNum && Number(s)<0) cls += ' neg';
+    return `<td class="${cls}" title="${esc(s)}">${esc(s)}</td>`;
+  }).join('')+'</tr>').join('');
+  t.innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
+  ST[prefix] = {headers, rows};
+}
+function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function statHtml(items){
+  return items.map(([label, val, cls, key])=>
+    `<div class="stat ${cls||''} ${key?'click':''}" ${key?`data-k="${key}"`:''}>${label}<b>${val}</b></div>`
+  ).join('');
+}
+
+/* Tab 切换：切换功能时先收起顶部配置面板，避免页面已切换但被长表单挡住。 */
+function closeTopPanels(){
+  q('#conn-panel').hidden=true;
+  q('#ai-config-panel').hidden=true;
+}
+function switchPage(name){
+  const tab=qa('nav button').find(x=>x.dataset.p===name);
+  if(tab) tab.click();
+}
+qa('nav button').forEach(b=>b.onclick=()=>{
+  closeTopPanels();
+  qa('nav button').forEach(x=>x.classList.toggle('on', x===b));
+  qa('.page').forEach(p=>p.classList.toggle('on', p.id==='p-'+b.dataset.p));
+  const active=q('#p-'+b.dataset.p);
+  if(active) active.scrollIntoView({behavior:'smooth',block:'start'});
+  if(b.dataset.p==='files') loadFiles();
+  if(b.dataset.p==='map' && !ST.mpInit){ ST.mpInit=1; mpGroups(); }
+  // 第一次切到「表行数统计」时加载对应关系分组，下拉才能选
+  if(b.dataset.p==='rows' && !ST.rcInit){ ST.rcInit=1; loadRcGroups(); }
+});
+
+/* ── 1. SQL 查询 ── */
+async function runSql(){
+  const sql = q('#sql-text').value.trim();
+  if(!sql) return alert('请输入 SQL');
+  const btn=q('#sql-run'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 查询中…'; busy(true); say('查询中…');
+  try{
+    const r = await post('/api/sql', {sql, cluster:q('#sql-cluster').value,
+      db:q('#sql-db').value.trim(), limit:+q('#sql-limit').value});
+    if(!r.ok){ say(r.msg,'err'); q('#sql-info').textContent=''; alert(r.msg); return; }
+    render('sql', r.headers, r.rows);
+    const tip = `${r.rows.length} 行 × ${r.headers.length} 列` + (r.truncated?'（已截断，可调大上限）':'');
+    q('#sql-info').textContent = tip; say('完成 · '+tip, 'ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+q('#sql-text').addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); runSql(); }
+});
+
+/* ── 2. 表行数统计 ── */
+/* 拉取集群里的所有库名填进 datalist。参数直接给输入框/集群框的 id，
+   免得每加一个页面就要回来改一次映射表 */
+async function loadAllDbs(inputId, clusterId){
+  const cluster = q('#'+clusterId).value;
+  const btn = event.target; const old = btn.textContent;
+  btn.disabled=true; btn.textContent='↻'; busy(true);
+  try{
+    const r = await post('/api/databases',{cluster});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    const opts = r.databases.map(d=>'<option value="'+esc(d)+'">').join('');
+    q('#alldblist').innerHTML = opts;
+    q('#'+inputId).setAttribute('list','alldblist');
+    q('#dblist').innerHTML += opts;
+    say('已加载 '+r.databases.length+' 个库','ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+async function runRowCount(){
+  const db = q('#rc-db').value.trim();
+  if(!db) return alert('请填写库名');
+  // 重跑 A 侧就要清掉上一次的 B 侧映射，否则导出会把对不上的旧 B 列带走
+  ST.rcB = null; ST.rcMapInfo = null; q('#rc-stats-b').style.display='none';
+  say('统计中…');
+  const j = await runJob('/api/rowcount',
+    {cluster:q('#rc-cluster').value, db, fallback:q('#rc-fb').checked},
+    q('#rc-run'), '统计中…');
+  if(!j) return;
+  ST.rcAll = j.items; ST.rcDb = j.db; ST.rcCluster = q('#rc-cluster').value;
+  // A 侧出来了就能套对应关系
+  q('#rc-map-run').disabled = !q('#rc-map-group').value;
+  const s = j.summary;
+  q('#rc-stats').innerHTML = statHtml([
+    ['对象总数', s.objects, 'a', 'all'], ['视图', s.views, '', 'view'],
+    ['空表', s.empty, 'w', 'empty'], ['行数未知', s.unknown, 'w', 'unknown'],
+    ['合计行数', s.total_rows.toLocaleString(), 'g']]);
+  qa('#rc-stats .stat.click').forEach(d=>d.onclick=()=>{
+    qa('#rc-stats .stat').forEach(x=>x.classList.toggle('on', x===d));
+    filterRc(d.dataset.k);
+  });
+  filterRc('all');
+  say(`完成 · ${s.objects} 个对象 / 空表 ${s.empty} / 未知 ${s.unknown} / 合计 ${s.total_rows.toLocaleString()} 行`, 'ok');
+}
+/* 拉所有对应关系分组，填进「套对应关系」前面的下拉。没存过就给一行提示 */
+async function loadRcGroups(){
+  const r = await (await fetch('/api/mapping/groups')).json();
+  const sel = q('#rc-map-group');
+  if(!r.ok || !r.groups.length){
+    sel.innerHTML = '<option value="">（还没存过对应关系，请先去「表对应关系」页配一次）</option>';
+    q('#rc-map-run').disabled = true;
+    return;
+  }
+  sel.innerHTML = '<option value="">—— 选一组已存的对应关系 ——</option>' +
+    r.groups.map(g=>'<option value="'+esc(g.key)+'">'+
+      (g.kind==='discovered_map'?'【全库】':'【手工】')+
+      esc(g.key)+' — '+g.count+' 张'+(g.db_count?'／'+g.db_count+' 个库':'')+
+      '</option>').join('');
+  sel.onchange = () => { q('#rc-map-run').disabled = !sel.value || !(ST.rcAll||[]).length; };
+}
+/* 把 A 侧统计结果 × 一组对应关系 × B 侧表清单 三方 JOIN，得到带 B 侧行数的宽表 */
+async function applyRcMapping(){
+  const key = q('#rc-map-group').value;
+  if(!key) return alert('请先选一组对应关系');
+  if(!(ST.rcAll||[]).length) return alert('请先点「开始统计」拿到 A 侧清单');
+  busy(true); say('加载对应关系…');
+  try{
+    const p = await post('/api/mapping/list', {key, db:'', kw:'', limit:50000});
+    if(!p.ok){ say(p.msg,'err'); return alert(p.msg); }
+    // key 格式 "cluster_a|db_a → cluster_b|db_b"，解出 B 侧集群+库
+    const m = key.match(/^(.+?)\|(.+?)\s*→\s*(.+?)\|(.+?)$/);
+    if(!m){
+      q('#rc-map-info').textContent = '这组 key 不是标准格式，无法自动定位 B 侧集群/库';
+      return alert('这组对应关系的 key 不是「集群|库 → 集群|库」格式\n请去「表对应关系」页核对分组命名');
+    }
+    const cb = m[3], dbB = m[4];
+    say(`拉取 B 侧 ${cb} / ${dbB} 的表清单…`);
+    const t = await post('/api/tables', {cluster:cb, db:dbB});
+    if(!t.ok){ say(t.msg,'err'); return alert(t.msg); }
+    const bMap = {}; t.items.forEach(x=>{ bMap[x.name] = x.rows; });
+    // A 侧以 name 为键（同一库里表名唯一），JOIN 时按 A 表名查 B 表名再取行数
+    const aMap = {}; ST.rcAll.forEach(x=>{ aMap[x.name] = x.rows; });
+    const pairs = p.items || [];
+    const joined = pairs.map(pr=>{
+      const ar = aMap[pr.a]; const br = bMap[pr.b];
+      let diff = null, status;
+      if(ar===undefined) status='A 侧无此表';
+      else if(br===undefined) status='B 侧无此表';
+      else if(ar===null||br===null){ status='行数未知'; }
+      else { diff = br - ar; status = diff===0 ? '一致' : '不同'; }
+      return {a:pr.a, a_rows:ar??null, b:pr.b, b_rows:br===undefined?null:br,
+              diff, status, a_db:ST.rcDb, b_db:dbB, b_cluster:cb};
+    });
+    const has = joined.filter(x=>x.b_rows!==null&&x.b_rows!==undefined).length;
+    const same = joined.filter(x=>x.status==='一致').length;
+    const diffN = joined.filter(x=>x.status==='不同').length;
+    const missB = joined.filter(x=>x.status==='B 侧无此表').length;
+    ST.rcB = joined; ST.rcMapInfo = {key, cb, dbB, total:joined.length, has, same, diffN, missB};
+    q('#rc-map-info').innerHTML =
+      `<b>${key}</b> · 对应 ${joined.length} 张 · 命中 B 侧 ${has} · 一致 ${same} · 不同 ${diffN} · B 侧缺失 ${missB}`;
+    filterRc('all');
+    q('#rc-stats-b').innerHTML = statHtml([
+      ['对应数', joined.length, 'a', 'mp_all'],
+      ['命中 B 侧', has, '', 'mp_hit'],
+      ['行数一致', same, 'g', 'mp_same'],
+      ['行数不同', diffN, 'e', 'mp_diff'],
+      ['B 侧无此表', missB, 'w', 'mp_miss']]);
+    q('#rc-stats-b').style.display = '';
+    qa('#rc-stats-b .stat.click').forEach(d=>d.onclick=()=>{
+      qa('#rc-stats-b .stat').forEach(x=>x.classList.toggle('on', x===d));
+      filterRc(d.dataset.k);
+    });
+    say(`已套对应关系 · 一致 ${same} / 不同 ${diffN} / B 侧缺失 ${missB}`, 'ok');
+  } finally { busy(false); }
+}
+function filterRc(mode){
+  if(ST.rcB && (mode.startsWith('mp_') || mode==='all')){
+    // 映射态：展示「A 侧表 / A 行数 / B 侧表 / B 行数 / 差额 / 状态」，按 B 侧过滤
+    let it = ST.rcB;
+    if(mode==='mp_same') it = it.filter(x=>x.status==='一致');
+    if(mode==='mp_diff') it = it.filter(x=>x.status==='不同');
+    if(mode==='mp_miss') it = it.filter(x=>x.status==='B 侧无此表');
+    if(mode==='mp_hit')  it = it.filter(x=>x.b_rows!==null&&x.b_rows!==undefined);
+    render('rc',
+      ['A 侧表名','A 行数','B 侧表名','B 行数','差额(B-A)','状态'],
+      it.map(x=>[x.a, x.a_rows===null?'':x.a_rows,
+                 x.b, x.b_rows===null?'':x.b_rows,
+                 x.diff===null?'':x.diff, x.status]));
+    return;
+  }
+  let it = ST.rcAll || [];
+  if(mode==='empty')   it = it.filter(t=>t.rows===0);
+  if(mode==='view')    it = it.filter(t=>/VIEW/i.test(t.type||''));
+  if(mode==='unknown') it = it.filter(t=>t.rows===null);
+  render('rc', ['表名','行数','类型'], it.map(t=>[t.name, t.rows===null?'':t.rows, t.type]));
+  // 填充两表对比下拉框
+  const tables = (ST.rcAll||[]).filter(t=>t.rows!==null&&t.rows!==undefined);
+  const opts = tables.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+' ('+t.rows.toLocaleString()+'行)</option>').join('');
+  q('#rc-cmp-a').innerHTML = '<option value="">—— 选表 ——</option>'+opts;
+  q('#rc-cmp-b').innerHTML = '<option value="">—— 选表 ——</option>'+opts;
+  q('#rc-cmp-box').style.display = tables.length ? '' : 'none';
+}
+function cmpTwoTables(){
+  const items = ST.rcAll || [];
+  const map = {}; items.forEach(t=>{ map[t.name] = t.rows; });
+  const a = q('#rc-cmp-a').value, b = q('#rc-cmp-b').value;
+  if(!a||!b) return alert('请选两个表');
+  if(a===b) return alert('选了同一个表');
+  const ra = map[a], rb = map[b];
+  let cls='', msg='';
+  if(ra===null||ra===undefined){ msg='表A行数未知'; cls='var(--warn)'; }
+  else if(rb===null||rb===undefined){ msg='表B行数未知'; cls='var(--warn)'; }
+  else {
+    const d = rb - ra;
+    cls = d===0 ? 'var(--ok)' : (d>0?'var(--pri)':'var(--err)');
+    msg = esc(a)+' '+ra.toLocaleString()+' 行 vs '+esc(b)+' '+rb.toLocaleString()+' 行 → '+
+          (d===0?'行数一致':('差额 '+(d>0?'+':'')+d.toLocaleString()+' 行'));
+  }
+  q('#rc-cmp-out').innerHTML = msg;
+  q('#rc-cmp-out').style.color = cls;
+}
+
+/* ── 3. 库数据对比（含表名映射） ── */
+/* 只有选中的映射方式需要的输入框才露出来，别让六种规则的框糊一屏 */
+function cpModeChange(){
+  const m = q('#cp-mode').value;
+  q('#cp-affix-box').style.display = m==='affix' ? '' : 'none';
+  q('#cp-regex-box').style.display = m==='regex' ? '' : 'none';
+  q('#cp-pairs-box').style.display = m==='pairs' ? '' : 'none';
+  q('#cp-map-desc').textContent =
+    m==='same' ? '' :
+    m==='saved' ? '直接用「表对应关系」页存好的对应，不用再配规则'
+                : '记得先「试跑映射」确认表名换算对不对';
+}
+function cpRule(){
+  return {mode:q('#cp-mode').value,
+    prefix_del:q('#cp-pdel').value, prefix_add:q('#cp-padd').value,
+    suffix_del:q('#cp-sdel').value, suffix_add:q('#cp-sadd').value,
+    pattern:q('#cp-pat').value, replace:q('#cp-rep').value,
+    pairs:q('#cp-pairs').value};
+}
+async function previewMapping(){
+  const dbA=q('#cp-dbA').value.trim();
+  if(!dbA) return alert('请先填 A 侧库名');
+  busy(true); say('试跑映射…');
+  try{
+    const r = await post('/api/mapping/preview', {clusterA:q('#cp-clusterA').value,
+      dbA, dbB:q('#cp-dbB').value.trim(), rule:cpRule(), limit:30});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#cp-map-desc').textContent = r.desc;
+    q('#cp-map-preview').innerHTML =
+      '<div class="seg open" id="mapseg"><div class="hd" onclick="q(\'#mapseg\').classList.toggle(\'open\')">'+
+      '<span class="tag">映射</span><b>'+esc(r.desc)+'</b><span class="n">A 侧共 '+r.total+
+      ' 张表，示例 '+r.shown+' 条，其中 '+r.changed+' 条名字有变化</span></div><pre>'+
+      r.items.map(i=>esc(i.name_a)+(i.changed?'   →   '+esc(i.name_b):'   （不变）')).join('\n')+
+      '</pre></div>';
+    say('映射试跑完成 · '+r.desc, 'ok');
+  } finally { busy(false); }
+}
+async function runDbCompare(){
+  const dbA=q('#cp-dbA').value.trim(), dbB=q('#cp-dbB').value.trim();
+  if(!dbA||!dbB) return alert('请填写两侧库名');
+  say('对比中…');
+  const j = await runJob('/api/dbcompare',
+    {clusterA:q('#cp-clusterA').value, dbA, clusterB:q('#cp-clusterB').value, dbB,
+     rule:cpRule()}, q('#cp-run'), '对比中…');
+  if(!j) return;
+  ST.cp = j;
+  ST.cpResult = j.result; ST.cpA = j.dbA; ST.cpB = j.dbB;
+  const s = j.summary, r = j.result;
+  q('#cp-map-desc').textContent = j.mapping.desc +
+    (j.mapping.scope ? '；'+j.mapping.scope+'（范围外 '+j.mapping.out_of_scope+' 张表已排除）' : '');
+  q('#cp-stats').innerHTML = statHtml([
+    ['对比表（全部）', r.pairs.length, 'a', 'pairs'],
+    ['行数不同', s.diff, 'e', 'diff'], [`仅 ${j.dbA} 有`, s.only_a, 'w', 'only_a'],
+    [`仅 ${j.dbB} 有`, s.only_b, 'w', 'only_b'], ['完全一致', s.same, 'g', 'same']]);
+  qa('#cp-stats .stat.click').forEach(d=>d.onclick=()=>{
+    qa('#cp-stats .stat').forEach(x=>x.classList.toggle('on', x===d));
+    showCp(d.dataset.k);
+  });
+  showCp('pairs'); qa('#cp-stats .stat')[0].classList.add('on');
+  say(`完成 · 映射「${j.mapping.desc}」· 行数不同 ${s.diff} / 仅A ${s.only_a} / 仅B ${s.only_b} / 一致 ${s.same}`, 'ok');
+}
+function showCp(key){
+  const r = ST.cpResult; if(!r) return;
+  const num = v => (v===null||v===undefined) ? '' : v;
+  if(key==='pairs'){
+    render('cp', [`A表名(${ST.cpA})`, `B表名(${ST.cpB})`, 'A 行数', 'B 行数', '差值 B-A', '状态'],
+      r.pairs.map(t=>[t.name_a, t.name_b, num(t.rows_a), num(t.rows_b), num(t.delta), t.status]));
+  } else if(key==='only_a'||key==='only_b'){
+    render('cp', ['表名','映射后对应表名','行数','类型'],
+      (r[key]||[]).map(t=>[t.name, t.name_b, num(t.rows), t.type]));
+  } else {
+    render('cp', [`A表名(${ST.cpA})`, `B表名(${ST.cpB})`, 'A 行数', 'B 行数', '差值 B-A', '类型'],
+      (r[key]||[]).map(t=>[t.name, t.name_b, num(t.rows_a), num(t.rows_b), num(t.delta), t.type]));
+  }
+  bindCpDrill();
+}
+/* 点结果里的表名 → 带着库名表名跳到单表数据对比，省去手打长表名 */
+function bindCpDrill(){
+  qa('#cp-table tbody tr').forEach(tr=>{
+    tr.style.cursor='pointer';
+    tr.title='点击 → 到「单表数据对比」钻进这张表';
+    tr.onclick=()=>{
+      const c=tr.children;
+      const a=(c[0]?.textContent||'').trim(), b=(c[1]?.textContent||'').trim();
+      if(!a && !b) return;
+      q('#ot-clusterA').value=q('#cp-clusterA').value;
+      q('#ot-clusterB').value=q('#cp-clusterB').value;
+      q('#ot-dbA').value=ST.cpA; q('#ot-dbB').value=ST.cpB;
+      q('#ot-tableA').value=a||b; q('#ot-tableB').value=b||a;
+      qa('nav button').forEach(x=>x.classList.toggle('on', x.dataset.p==='one'));
+      qa('.page').forEach(p=>p.classList.toggle('on', p.id==='p-one'));
+      say('已带入 '+(a||b)+'，填主键后点「开始对比」');
+    };
+  });
+}
+async function exportDbCompare(){
+  const r = ST.cpResult; if(!r) return alert('请先对比');
+  const pair = ['A表名','B表名','A 行数','B 行数','差值(B-A)','类型'];
+  const fp = ls => ls.map(t=>[t.name, t.name_b, t.rows_a, t.rows_b, t.delta, t.type]);
+  const fs = ls => ls.map(t=>[t.name, t.name_b, t.rows, t.type]);
+  await doExport({
+    '概要': [['项目','内容'], [['A 侧', (ST.cp?.clusterA||'')+' / '+ST.cpA],
+             ['B 侧', (ST.cp?.clusterB||'')+' / '+ST.cpB],
+             ['表名映射', ST.cp?.mapping?.desc||'同名对比'],
+             ['对比范围', ST.cp?.mapping?.scope||'B 侧全库'],
+             ['范围外已排除', ST.cp?.mapping?.out_of_scope||0],
+             ['行数不同', r.diff.length], ['仅A有', r.only_a.length],
+             ['仅B有', r.only_b.length], ['完全一致', r.same.length]]],
+    '对比表': [['A表名','B表名','A 行数','B 行数','差值(B-A)','状态','类型'],
+             r.pairs.map(t=>[t.name_a,t.name_b,t.rows_a,t.rows_b,t.delta,t.status,t.type])],
+    '行数不同': [pair, fp(r.diff)],
+    '仅A有': [['表名','映射后对应表名','行数','类型'], fs(r.only_a)],
+    '仅B有': [['表名','映射后对应表名','行数','类型'], fs(r.only_b)],
+    '完全一致': [pair, fp(r.same)],
+  }, `${ST.cpA}_vs_${ST.cpB}_对比`);
+}
+
+/* ── 4. 单表数据对比 ── */
+async function loadTables(side){
+  const db = q('#ot-db'+side).value.trim();
+  if(!db) return alert('请先填该侧库名');
+  const btn=event.target, old=btn.textContent;
+  btn.disabled=true; btn.textContent='↻'; busy(true);
+  try{
+    const r = await post('/api/tables', {cluster:q('#ot-cluster'+side).value, db});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#ot-list'+side).innerHTML = r.items.map(t=>'<option value="'+esc(t.name)+'">'+
+      (t.rows===null?'':t.rows.toLocaleString()+' 行')+'</option>').join('');
+    say(db+' 共 '+r.count+' 张表，已填入下拉','ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+async function deriveTableB(){
+  const ta = q('#ot-tableA').value.trim();
+  if(!ta) return alert('请先填 A 侧表名');
+  const r = await post('/api/mapping/preview', {clusterA:q('#ot-clusterA').value,
+    dbA:q('#ot-dbA').value.trim(), dbB:q('#ot-dbB').value.trim(),
+    rule:{mode:q('#ot-mode').value}, names:[ta]});
+  if(!r.ok) return alert(r.msg);
+  q('#ot-tableB').value = r.items[0].name_b;
+  q('#ot-derive').textContent = r.desc;
+}
+async function runTableCompare(){
+  const dbA=q('#ot-dbA').value.trim(), ta=q('#ot-tableA').value.trim();
+  if(!dbA||!ta) return alert('请填写 A 侧库名与表名');
+  const whereA=q('#ot-whereA').value.trim();
+  const j = await runJob('/api/tablecompare', {
+    clusterA:q('#ot-clusterA').value, dbA, tableA:ta,
+    clusterB:q('#ot-clusterB').value, dbB:q('#ot-dbB').value.trim()||dbA,
+    tableB:q('#ot-tableB').value.trim(),
+    rule:{mode:q('#ot-mode').value},
+    keys:q('#ot-keys').value, limit:+q('#ot-limit').value,
+    whereA, whereB:q('#ot-whereB').value.trim()||whereA},
+    q('#ot-run'), '对比中…');
+  if(!j) return;
+  const R = j.result; ST.ot = R;
+  const cs=R.col_summary, ct=R.count, d=R.data;
+  const structOk = !cs.only_a && !cs.only_b && !cs.type_diff;
+  const countOk = ct.delta===0;
+  const dataOk = d ? (d.verdict.level==='ok') : null;
+  let lvl='ok', txt='', next=[];
+  if(!structOk){ lvl='diff'; next.push('先解决字段结构差异：字段缺失/类型不一致会让下游脚本直接取不到值'); }
+  if(!countOk){ lvl='diff'; next.push(`行数差 ${ct.delta>0?'+':''}${ct.delta.toLocaleString()}：先查采集任务是否漏批次、过滤条件是否同口径`); }
+  if(d && !dataOk){ lvl='diff'; next.push(d.verdict.next); }
+  txt = (structOk&&countOk&&(dataOk!==false))
+      ? '结构、行数'+(d?'、明细':'')+'都一致'
+      : `结构${structOk?'一致':'有差异'} · 行数${countOk?'一致':'不一致'}`+(d?` · 明细${dataOk?'一致':'有差异'}`:'');
+  q('#ot-verdict').innerHTML = '<div class="verdict '+lvl+'"><b>'+esc(txt)+'</b>'+
+    esc(R.table.a)+'（'+esc(R.cluster.a)+'） vs '+esc(R.table.b)+'（'+esc(R.cluster.b)+'）<br>'+
+    esc(R.note||'')+(next.length?'<br>下一步：'+esc(next.join('；')):'')+'</div>';
+  const items = [
+    ['A 字段数', cs.a, 'a'], ['B 字段数', cs.b, 'a'],
+    ['仅A有字段', cs.only_a, cs.only_a?'e':'g', 'only_a'],
+    ['仅B有字段', cs.only_b, cs.only_b?'e':'g', 'only_b'],
+    ['类型差异', cs.type_diff, cs.type_diff?'w':'g', 'type_diff'],
+    ['A 行数', ct.a.toLocaleString(), 'a'], ['B 行数', ct.b.toLocaleString(), 'a'],
+    ['行数差 B-A', (ct.delta>0?'+':'')+ct.delta.toLocaleString(), ct.delta?'e':'g']];
+  if(d) items.push(['匹配行对', d.stats.matched, 'a', 'matched'],
+                   ['仅A有数据', d.stats.only_a, d.stats.only_a?'e':'g', 'd_only_a'],
+                   ['仅B有数据', d.stats.only_b, d.stats.only_b?'e':'g', 'd_only_b'],
+                   ['字段值差异', d.stats.diff_cells, d.stats.diff_cells?'e':'g', 'diffs']);
+  q('#ot-stats').innerHTML = statHtml(items);
+  qa('#ot-stats .stat.click').forEach(x=>x.onclick=()=>{
+    qa('#ot-stats .stat').forEach(y=>y.classList.toggle('on', y===x));
+    showOt(x.dataset.k);
+  });
+  showOt(cs.only_a||cs.only_b||cs.type_diff ? 'only_a' : (d&&d.stats.diff_cells ? 'diffs' : 'type_diff'));
+  q('#ot-info').textContent = `字段 ${cs.a}/${cs.b} · 行数 ${ct.a.toLocaleString()}/${ct.b.toLocaleString()}`+
+    (d?` · 差异 ${d.stats.diff_cells} 处`:'');
+  say('完成 · '+txt, lvl==='ok'?'ok':'err');
+}
+function showOt(key){
+  const R = ST.ot; if(!R) return;
+  const C = R.columns, d = R.data;
+  if(key==='only_a'||key==='only_b'){
+    const side = key==='only_a' ? 'A' : 'B';
+    render('ot', ['字段名','类型','可空','仅哪边有'],
+      (C[key]||[]).map(c=>[c.name, c.type, c.nullable, '仅 '+side+' 有']));
+  } else if(key==='type_diff'){
+    render('ot', ['字段名','A 类型','B 类型','A 可空','B 可空','差异'],
+      (C.type_diff||[]).map(c=>[c.name, c.type_a, c.type_b, c.nullable_a, c.nullable_b, c.kind]));
+  } else if(key==='diffs' && d){
+    render('ot', ['主键','字段','A 值','B 值'],
+      (d.diffs||[]).map(x=>[x.key, x.column, x.a, x.b]));
+  } else if(key==='d_only_a' && d){
+    render('ot', ['仅 A 侧有的主键'], (d.only_a||[]).map(k=>[k]));
+  } else if(key==='d_only_b' && d){
+    render('ot', ['仅 B 侧有的主键'], (d.only_b||[]).map(k=>[k]));
+  } else if(key==='matched' && d){
+    render('ot', ['级别','主键','字段','出错原因','说明'],
+      (d.logs||[]).map(l=>[l.level, l.key, l.column, l.reason, l.detail]));
+  } else {
+    render('ot', ['字段名','A 类型','B 类型','说明'],
+      (C.same||[]).map(c=>[c.name, c.type_a, c.type_b, '一致']));
+  }
+}
+async function exportTableCompare(){
+  const R = ST.ot; if(!R) return alert('请先对比');
+  const C=R.columns, d=R.data, cs=R.col_summary, ct=R.count;
+  const sheets = {
+    '概要': [['项目','内容'], [
+      ['A 侧', R.cluster.a+' / '+R.table.a], ['B 侧', R.cluster.b+' / '+R.table.b],
+      ['A 侧 WHERE', R.where.a], ['B 侧 WHERE', R.where.b],
+      ['A 字段数', cs.a], ['B 字段数', cs.b],
+      ['仅A有字段', cs.only_a], ['仅B有字段', cs.only_b], ['类型差异', cs.type_diff],
+      ['A 行数', ct.a], ['B 行数', ct.b], ['行数差(B-A)', ct.delta],
+      ['明细结论', d ? d.verdict.text : '未比明细（没填主键）'],
+      ['下一步', d ? d.verdict.next : ''], ['说明', R.note||'']]],
+    '结构差异': [['字段名','A 类型','B 类型','A 可空','B 可空','差异'],
+      (C.only_a||[]).map(c=>[c.name,c.type,'',c.nullable,'','仅A有'])
+      .concat((C.only_b||[]).map(c=>[c.name,'',c.type,'',c.nullable,'仅B有']))
+      .concat((C.type_diff||[]).map(c=>[c.name,c.type_a,c.type_b,c.nullable_a,c.nullable_b,c.kind]))],
+  };
+  if(d){
+    sheets['明细差异'] = [['主键','字段','A 值','B 值'],
+      (d.diffs||[]).map(x=>[x.key,x.column,x.a,x.b])];
+    sheets['排查日志'] = [['级别','主键','字段','出错原因','说明'],
+      (d.logs||[]).map(l=>[l.level,l.key,l.column,l.reason,l.detail])];
+    sheets['单边主键'] = [['只在哪边','主键'],
+      (d.only_a||[]).map(k=>['仅A',k]).concat((d.only_b||[]).map(k=>['仅B',k]))];
+  }
+  await doExport(sheets, `单表对比_${R.table.a.split('.').pop()}`);
+}
+
+/* ══ SQL 排查工作台 ══ */
+const pbA = () => q('#pb-a').value.trim();
+const pbB = () => q('#pb-b').value.trim();
+const pbNames = () => ({a: q('#pb-na').value || '脚本A', b: q('#pb-nb').value || '脚本B'});
+function pbFill(){
+  q('#pb-a').value = "SELECT a.id, a.category_name, SUM(b.amount) AS amt\nFROM demo.orders a\nLEFT JOIN demo.order_items b ON a.id = b.order_id\nWHERE a.is_deleted = 0 AND DATE(a.order_date) BETWEEN '2026-07-01' AND '2026-07-31'\nGROUP BY a.id, a.category_name";
+  q('#pb-b').value = "SELECT a.id, a.category_name, SUM(b.amount) AS amt\nFROM demo.orders a\nINNER JOIN demo.order_items b ON a.id = b.order_id AND b.is_deleted = 0\nWHERE a.is_deleted = 0 AND DATE(a.order_date) BETWEEN '2026-07-01' AND '2026-07-31'\nGROUP BY a.id, a.category_name";
+  q('#pb-context').value = '新版原本只想排除已删除的订单明细，但订单主表的保留范围和汇总口径应该保持不变。';
+  say('已填入示例：B 把 LEFT JOIN 改成了 INNER JOIN，点「比较逻辑」看风险提示');
+}
+/* 子标签切换 */
+qa('.subnav').forEach(nv=>{
+  nv.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    nv.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+    const scope = nv.parentElement;
+    scope.querySelectorAll(':scope > .sub').forEach(s=>
+      s.classList.toggle('on', s.id==='s-'+b.dataset.s));
+    if(scope.id==='p-t2x')
+      q('#tx-wrap').style.display = b.dataset.s==='txt' ? '' : 'none';
+  });
+});
+
+/* ① 逻辑对比 */
+async function runLogic(){
+  if(!pbA()||!pbB()){ alert('请把两个脚本 SQL 都填上'); return false; }
+  const btn=q('#pb-logic-run'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 分析中…'; busy(true);
+  try{
+    const n=pbNames();
+    const r = await post('/api/sql/logic',{sql_a:pbA(),sql_b:pbB(),name_a:n.a,name_b:n.b});
+    if(!r.ok){ say(r.msg,'err'); alert(r.msg); return false; }
+    ST.logic = r;
+    q('#pb-la').textContent='脚本 A · '+n.a; q('#pb-lb').textContent='脚本 B · '+n.b;
+    q('#pb-risks').innerHTML = r.risks.length ? r.risks.map(k=>`
+      <div class="risk ${k.level}"><b>${RISK_ICON[k.level]||''} ${esc(k.title)}</b>
+        <div class="d">${esc(k.detail)}</div>
+        <div class="a">建议：${esc(k.advice)}</div></div>`).join('')
+      : `<div class="verdict ok"><b>没检测到结构性风险</b>两边的表、JOIN 类型、限定条件、分组方式一致。
+         建议继续做「② 数据层对比」用真实明细确认。</div>`;
+    const sa=r.summary.a, sb=r.summary.b;
+    q('#pb-logic-stats').innerHTML = statHtml([
+      ['表', `${sa.tables} / ${sb.tables}`, 'a'], ['JOIN', `${sa.joins} / ${sb.joins}`, 'a'],
+      ['过滤条件', `${sa.conditions} / ${sb.conditions}`, 'a'],
+      ['字段', `${sa.fields} / ${sb.fields}`, 'a'],
+      ['子查询', `${sa.subqueries} / ${sb.subqueries}`, ''],
+      ['风险', r.risks.length, r.risks.length?'e':'g']]);
+    showLogicTab('joins');
+    q('#pb-logic-info').textContent = `${n.a} ${sa.chars} 字符 / ${n.b} ${sb.chars} 字符`;
+    say(`逻辑比较完成 · ${r.risks.length} 条风险`, r.risks.length?'err':'ok');
+    return true;
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+
+async function runAiLogic(){
+  if(!pbA()||!pbB()) return alert('请把两个脚本 SQL 都填上');
+  const staticOk=await runLogic();
+  if(!staticOk) return;
+  if(!confirm('将把两段 SQL、静态差异证据和业务背景发送到你配置的 AI 服务。\n请确认脚本已脱敏且符合公司规定。')) return;
+  const btn=q('#pb-ai-run'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 推理中…'; busy(true); say('AI 正在基于静态证据分析语义影响…');
+  try{
+    const n=pbNames();
+    const r=await post('/api/sql/ai-logic',{
+      sql_a:pbA(),sql_b:pbB(),name_a:n.a,name_b:n.b,
+      context:q('#pb-context').value.trim(),dialect:q('#pb-dialect').value
+    });
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    ST.aiLogic=r;
+    const conf={high:'高',medium:'中',low:'低'}[r.confidence]||'低';
+    let html=`<div class="verdict ${r.confidence==='high'?'diff':'warn'}">
+      <b>AI 证据推理 · 置信度${conf}</b>${esc(r.conclusion||'模型未给出明确结论')}</div>`;
+    if(r.evidence_basis?.length) html+=`<div class="card"><b>直接证据</b><ul>${
+      r.evidence_basis.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    if(r.differences?.length) html+=`<h3 style="margin:14px 0 8px">语义差异与可能影响</h3>`+
+      r.differences.map(x=>`<div class="risk ${x.severity}">
+        <b>${RISK_ICON[x.severity]||''} ${esc(x.category)}</b>
+        <div class="d"><b>证据：</b>${esc(x.evidence)}</div>
+        <div class="d"><b>可能影响：</b>${esc(x.impact)}</div>
+        <div class="a"><b>判断理由：</b>${esc(x.reasoning)}</div></div>`).join('');
+    if(r.hypotheses?.length) html+=`<h3 style="margin:14px 0 8px">待验证假设</h3>`+
+      r.hypotheses.map(x=>`<div class="layer"><span class="pill">可能性 ${esc(x.likelihood)}</span>
+        <div class="nm">${esc(x.hypothesis)}</div><div class="ad">需要证据：${esc(x.evidence_needed)}</div></div>`).join('');
+    if(r.verification_steps?.length) html+=`<h3 style="margin:14px 0 8px">建议验证步骤（不会自动执行）</h3>`+
+      r.verification_steps.map((x,i)=>`<div class="seg open"><div class="hd">
+        <span class="tag">验证 ${i+1}</span><b>${esc(x.title)}</b>
+        ${x.sql&&x.audit?.safe?`<button class="btn" style="margin-left:auto" onclick="useAiVerifySql(${i})">放入查询页</button>`:''}
+        </div><div style="padding:9px 12px;color:var(--mute)">${esc(x.purpose)}</div>
+        ${x.sql?`<pre style="display:block">${esc(x.sql)}</pre>`:''}
+        ${x.note?`<div class="warnbox" style="margin:8px">${esc(x.note)}</div>`:''}</div>`).join('');
+    if(r.blind_spots?.length) html+=`<div class="warnbox"><b>结论边界</b><ul>${
+      r.blind_spots.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    q('#pb-ai-reason').innerHTML=html;
+    q('#pb-ai-reason').scrollIntoView({behavior:'smooth',block:'start'});
+    say('AI 推理完成；结论仍需用真实数据验证','ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+
+function useAiVerifySql(index){
+  const step=ST.aiLogic?.verification_steps?.[index];
+  if(!step?.sql || !step.audit?.safe) return alert('这条验证 SQL 未通过只读检查，不能放入查询页');
+  q('#sql-text').value=step.sql;
+  switchPage('sql');
+  say('已放入 SQL 查询页，请核对库名、字段和范围后手动执行','ok');
+}
+function showLogicTab(kind){
+  const r = ST.logic; if(!r) return;
+  const n = r.names;
+  if(kind==='joins'){
+    const rows=[];
+    (r.joins.a||[]).forEach(j=>rows.push([n.a, j.type, j.table, j.on]));
+    (r.joins.b||[]).forEach(j=>rows.push([n.b, j.type, j.table, j.on]));
+    render('pl', ['脚本','JOIN 类型','右表','ON 条件'], rows);
+  }
+}
+
+/* ② 数据层对比 */
+async function runPrepare(){
+  const which = pbA() || pbB();
+  if(!which) return alert('请先填入脚本 SQL');
+  const btn=q('#pb-prep'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 分析中…'; busy(true);
+  try{
+    const r = await post('/api/sql/prepare',{sql:pbA()||pbB(), pk:q('#pb-keys').value});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    ST.prep = r;
+    // ① 先精确日期。只在子查询里的字段也能用：时间条件会下推到子查询，
+    //    或换回它背后的表达式；带 ⚠️ 的才是真的用不了
+    const sel = q('#pb-tcol');
+    sel.innerHTML = '<option value="">（不切片，直接取前N条）</option>' +
+      r.time_columns.map(t=>'<option value="'+esc(t.column)+'">'+
+        (t.usable?'':'⚠️ ')+esc(t.column)+' — '+esc(t.source)+
+        (t.scope_label?' ['+esc(t.scope_label)+']':'')+
+        (t.is_sys_time?' [系统时间]':'')+'</option>').join('');
+    if(r.time_columns.length) sel.selectedIndex = 1;
+    sel.title = '带 ⚠️ 的字段最外层引用不到、也换算不出来，不能用于分片；'+
+                '标「下推」的会把时间条件加进子查询的 WHERE';
+    q('#pb-start').value = r.suggest.start; q('#pb-end').value = r.suggest.end;
+    // ② 再找主键
+    const pk = q('#pb-pkpick');
+    pk.innerHTML = '<option value="">（手动填写）</option>' +
+      (r.primary_keys||[]).map(k=>'<option value="'+esc(k.column)+'">'+esc(k.column)+
+        ' — '+esc(k.source)+'</option>').join('');
+    if(r.default_key){ pk.selectedIndex = 1; q('#pb-keys').value = r.default_key; }
+    let hint = '';
+    if((r.primary_keys||[]).length){
+      hint = '<div class="warnbox" style="margin-top:8px"><b>主键推荐（默认取第一个）</b><br>' +
+        r.primary_keys.slice(0,5).map(k=>'· <code>'+esc(k.column)+'</code> 分'+k.score+
+          '，来源：'+esc(k.source)+(k.note?'（'+esc(k.note)+'）':'')).join('<br>') + '</div>';
+    } else {
+      hint = '<div class="warnbox" style="margin-top:8px">没识别出主键候选，请手动填。'+
+             '聚合口径的指标 SQL 通常只 SELECT 日期和 sum()，需要先改成明细口径</div>';
+    }
+    if(r.detail_sql){
+      hint += '<div class="seg" id="dseg" style="margin-top:8px">'+
+        '<div class="hd" onclick="q(\'#dseg\').classList.toggle(\'open\')">'+
+        '<span class="tag">改写</span><b>已按「日期+主键」改写成明细口径 SQL</b>'+
+        '<span class="n">点击展开，可复制回上方输入框</span></div>'+
+        '<pre>'+esc(r.detail_sql)+'</pre></div>';
+    }
+    q('#pb-pkhint').innerHTML = hint;
+    q('#pb-prep-info').textContent =
+      '时间字段 '+r.time_columns.length+' 个 · 主键候选 '+(r.primary_keys||[]).length+
+      ' 个 · '+r.suggest.source;
+    say('已识别日期与主键，确认后点「进库比明细」', 'ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+function pickPk(){
+  const v = q('#pb-pkpick').value;
+  if(v) q('#pb-keys').value = v;
+}
+/* 先看分片方案：不取数，只算「总量 + 各时段行数 + 怎么切」 */
+async function planScan(){
+  const sql = pbA() || pbB();
+  if(!sql) return alert('请先填入脚本 SQL');
+  const tc = q('#pb-tcol').value;
+  if(!tc) return alert('全量分片必须先选业务时间字段（点「① 识别日期与主键」）');
+  const j = await runJob('/api/sql/plan-scan', {
+    sql, time_col:tc, start:q('#pb-start').value, end:q('#pb-end').value,
+    batch:+q('#pb-limit').value,
+    cluster:q('#pb-ca').value, db:q('#pb-dba').value}, null, '规划中…');
+  if(!j) return;
+  const pl = j.plan;
+  const grains = [...new Set(pl.slices.map(s=>s.grain))].join(' / ');
+  let html = '<div class="verdict '+(pl.consistent?'ok':'diff')+'" style="margin-top:8px">'+
+    '<b>分片方案：'+pl.slice_count+' 片，粒度 '+esc(grains)+'</b>'+
+    '明细层总行数 <b>'+pl.total_rows.toLocaleString()+'</b>'+
+    '（原 SQL 聚合后只输出 '+pl.agg_rows+' 行'+(pl.is_aggregated?'，属聚合口径':'')+'）<br>'+
+    '分片预估合计 '+pl.planned_rows.toLocaleString()+' 行，'+
+    (pl.consistent?'与总量一致 ✅':'与总量不一致 ⚠️')+'<br>'+
+    '时间条件改写：'+esc(pl.rewrite_note)+'</div>';
+  if(pl.warning) html += '<div class="warnbox">'+esc(pl.warning)+'</div>';
+  html += '<div class="seg" id="plseg"><div class="hd" onclick="q(\'#plseg\').classList.toggle(\'open\')">'+
+    '<span class="tag">明细</span><b>各分片时间范围与行数</b><span class="n">点击展开</span></div>'+
+    '<pre>'+pl.slices.map((s,i)=>
+      ('#'+(i+1)).padEnd(6)+'['+s.grain+'] '+s.start+' → '+(s.end_bound||s.end)+
+      '   '+String(s.rows).padStart(5)+' 行'+(s.over?'  ⚠单段超限':'')).join('\n')+'</pre></div>';
+  q('#pb-plan').innerHTML = html;
+  q('#pb-plan-info').textContent = pl.slice_count+' 片 · 合计 '+pl.planned_rows.toLocaleString()+' 行';
+  say('分片方案已生成：'+pl.slice_count+' 片，合计 '+pl.planned_rows+' 行',
+      pl.consistent?'ok':'err');
+}
+async function runDataCmp(){
+  if(!pbA()||!pbB()) return alert('请把两个脚本 SQL 都填上');
+  if(!q('#pb-keys').value.trim()) return alert('请填明细主键字段，否则无法按主键对齐比较');
+  const full = q('#pb-full').checked;
+  if(full && !q('#pb-tcol').value) return alert('全量分片必须先选业务时间字段');
+  const j = await runJob('/api/sql/compare-data', {
+    sql_a:pbA(), sql_b:pbB(), keys:q('#pb-keys').value,
+    time_col:q('#pb-tcol').value, start:q('#pb-start').value, end:q('#pb-end').value,
+    limit:+q('#pb-limit').value, full_scan:full,
+    cluster_a:q('#pb-ca').value, db_a:q('#pb-dba').value,
+    cluster_b:q('#pb-cb').value, db_b:q('#pb-dbb').value,
+  }, q('#pb-data-run'), full?'全量分片取数中…':'查询比对中…');
+  if(!j) return;
+  ST.data = j;
+  const v = j.verdict, s = j.stats;
+  q('#pb-verdict').innerHTML =
+    '<div class="verdict '+v.level+'"><b>'+esc(v.text)+'</b>下一步：'+esc(v.next)+'</div>';
+  // 取数方式说明：全量分片时把两侧的总量/分片数/粒度都摆出来
+  const sc = j.scan || {};
+  if(sc.mode === 'full_scan'){
+    const row = (tag, o) => '<tr><td>'+tag+'</td><td class="num">'+o.total.toLocaleString()+
+      '</td><td class="num">'+o.agg+'</td><td class="num">'+o.slices+'</td><td>'+
+      esc(o.grains.join('/'))+'</td><td class="num">'+o.fetched.toLocaleString()+
+      '</td><td>'+(o.fetched===o.total?'✅ 取全':'⚠️ 有缺口')+'</td></tr>';
+    q('#pb-scan').innerHTML =
+      '<div class="card" style="margin-bottom:12px"><b>全量分片取数结果</b>'+
+      '<table style="margin-top:6px"><thead><tr><th>侧</th><th>明细总行数</th>'+
+      '<th>聚合后行数</th><th>分片数</th><th>粒度</th><th>实际取到</th><th>结论</th>'+
+      '</tr></thead><tbody>'+row('A', sc.a)+row('B', sc.b)+'</tbody></table>'+
+      (sc.detail_mode? '<div class="warnbox" style="margin-top:8px">'+esc(sc.detail_note)+'</div>':'')+
+      ([sc.a.warning, sc.b.warning, sc.a.note, sc.b.note].filter(x=>x&&x.indexOf('一致')<0)
+        .map(x=>'<div class="warnbox" style="margin-top:8px">'+esc(x)+'</div>').join(''))+
+      '</div>';
+  } else {
+    q('#pb-scan').innerHTML = sc.hint?
+      '<div class="warnbox">'+esc(sc.hint)+'</div>' : '';
+  }
+  q('#pb-data-stats').innerHTML = statHtml([
+    ['A 行数', s.rows_a, 'a'], ['B 行数', s.rows_b, 'a'],
+    ['匹配行对', s.matched, 'g'],
+    ['仅 A 有', s.only_a, s.only_a?'e':'g', 'only_a'],
+    ['仅 B 有', s.only_b, s.only_b?'e':'g', 'only_b'],
+    ['字段差异', s.diff_cells, s.diff_cells?'e':'g', 'diffs'],
+    ['一边为空', s.null_flip, s.null_flip?'w':'g'],
+    ['排查日志', j.logs_total, j.logs_total?'w':'g', 'logs']]);
+  qa('#pb-data-stats .stat.click').forEach(d=>d.onclick=()=>{
+    qa('#pb-data-stats .stat').forEach(x=>x.classList.toggle('on', x===d));
+    showData(d.dataset.k);
+  });
+  showData('logs');
+  // 对比跑完了就能把差异累入跟踪文件
+  q('#pb-archive-run').disabled = false;
+  // 时间片标签若没填，用业务时间的起止自动填一个
+  if(!q('#pb-archive-slice').value.trim()){
+    const st = (j.executed||{}).start, en = (j.executed||{}).end;
+    if(st && en) q('#pb-archive-slice').value = st+' ~ '+en;
+    else if(st) q('#pb-archive-slice').value = '自 '+st;
+    else q('#pb-archive-slice').value = new Date().toISOString().slice(0,10);
+  }
+  say(v.text, v.level==='ok'?'ok':'err');
+}
+function showData(kind){
+  const j = ST.data; if(!j) return;
+  if(kind==='logs')
+    render('pd', ['级别','明细主键','字段','出错原因','说明'],
+      j.logs.map(l=>[l.level, l.key, l.column, l.reason, l.detail]));
+  else if(kind==='diffs')
+    render('pd', ['主键','字段','A 值','B 值'],
+      j.diffs.map(d=>[d.key, d.col, d.a, d.b]));
+  else
+    render('pd', [(j.stats.keys||[]).join('+')], (j[kind]||[]).map(k=>[k]));
+}
+function showExecuted(){
+  const j = ST.data;
+  if(!j) return alert('请先执行数据层对比');
+  const e = j.executed;
+  alert(`业务时间字段: ${e.time_col||'(未切片)'}\n范围: ${e.start||'-'} ~ ${e.end||'-'}\n条数上限: ${e.limit}\n\n─── A 侧实际执行 ───\n${e.sql_a}\n\n─── B 侧实际执行 ───\n${e.sql_b}`);
+}
+async function exportProbeLog(){
+  const j = ST.data;
+  if(!j) return alert('请先执行数据层对比');
+  busy(true); say('导出排查日志…');
+  try{
+    const r = await post('/api/sql/export-log', {
+      logs:j.logs, diffs:j.diffs, stats:j.stats, verdict:j.verdict,
+      executed:j.executed, name:'SQL排查日志_'+(q('#pb-nb').value||'新脚本')});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    say(`已导出 ${r.file}（${r.size}）`,'ok');
+    if(confirm(`已生成 ${r.file}（${r.size}）\n\n现在下载？`))
+      location.href='/download/'+encodeURIComponent(r.file);
+  } finally { busy(false); }
+}
+/* ── 多轮累积：把本轮差异并入跟踪文件 ──
+   合并三类差异：
+   · diffs  → 字段级差异（{key,col,a,b}）
+   · only_a → A 侧有、B 侧整行缺
+   · only_b → B 侧有、A 侧整行缺
+   后端按「主键+字段」去重合并，并把本轮主键范围内不再出现的历史差异标「已修复」 */
+async function accumulateToArchive(){
+  const j = ST.data;
+  if(!j) return alert('请先执行数据层对比');
+  const slice = q('#pb-archive-slice').value.trim();
+  if(!slice) return alert('请填写时间片标签（如 2026-01~03），多轮累入时用来区分来源');
+  const name = q('#pb-archive-name').value.trim() || '差异跟踪';
+  const diffs = [];
+  (j.diffs||[]).forEach(d => diffs.push(
+    {pk:d.key, col:d.col, a:d.a, b:d.b, kind:'字段值差异'}));
+  (j.only_a||[]).forEach(pk => diffs.push(
+    {pk, col:'', a:'(存在)', b:'', kind:'仅 A 侧有'}));
+  (j.only_b||[]).forEach(pk => diffs.push(
+    {pk, col:'', a:'', b:'(存在)', kind:'仅 B 侧有'}));
+  if(!diffs.length) return alert('本轮没有任何差异可累入（包括 only_a/only_b）');
+  // 本轮主键集合 = diffs 的 pk ∪ only_a ∪ only_b（已合到 diffs 里）
+  const pksInScope = Array.from(new Set(diffs.map(d=>d.pk).filter(Boolean)));
+  const btn = q('#pb-archive-run'), old = btn.textContent;
+  btn.disabled = true; btn.textContent = '累入中…';
+  busy(true); say(`累入 ${diffs.length} 条差异到「${name}」…`);
+  try{
+    const r = await post('/api/sql/accumulate-diffs',
+      {name, diffs, time_slice:slice, pks_in_scope:pksInScope});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#pb-archive-info').innerHTML =
+      `<b>${r.file}</b> · 本轮新增 ${r.added} / 已修复 ${r.fixed}` +
+      (r.kept_unfixed ? ` / 历史未修复 ${r.kept_unfixed}` : '') +
+      (r.updated ? ` / 更新 ${r.updated}` : '') +
+      ` · 档案累计 ${r.total} 条（${r.size}）` +
+      ' <a href="javascript:void(0)" onclick="downloadArchive()" ' +
+      'style="color:var(--pri)">下载档案</a>';
+    ST.archiveFile = r.file;
+    say(`已累入 · 本轮新增 ${r.added} / 已修复 ${r.fixed} / 累计 ${r.total}`, 'ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+function downloadArchive(){
+  const f = ST.archiveFile;
+  if(!f) return alert('还没有累入过档案');
+  location.href = '/download/' + encodeURIComponent(f);
+}
+
+/* ③ 长SQL拆分 */
+async function runSplit(){
+  const sql = q('#pb-which').value==='a' ? pbA() : pbB();
+  if(!sql) return alert('对应的脚本框是空的');
+  busy(true);
+  try{
+    const r = await post('/api/sql/split',{sql});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#pb-segs').innerHTML = r.segments.map((s,i)=>`
+      <div class="seg" id="seg${i}">
+        <div class="hd" onclick="q('#seg${i}').classList.toggle('open')">
+          <span class="tag">${esc(s.no)}</span>
+          <b>${esc(s.name||s.kind)}</b>
+          <span>${esc(s.desc)}</span>
+          <span class="n">${s.chars} 字符 · 点击展开</span>
+        </div><pre>${esc(s.sql)}</pre></div>`).join('');
+    q('#pb-split-info').textContent = `${r.total_chars} 字符 → ${r.segment_count} 段`;
+    say(`已拆成 ${r.segment_count} 段`,'ok');
+  } finally { busy(false); }
+}
+
+/* ④ 依赖表 & 辅助SQL */
+async function runLineage(){
+  const sql = q('#pb-which2').value==='a' ? pbA() : pbB();
+  if(!sql) return alert('对应的脚本框是空的');
+  busy(true);
+  try{
+    const r = await post('/api/sql/prepare',{sql, pk:q('#pb-pk').value});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    const lin = r.lineage;
+    q('#pb-lineage').innerHTML =
+      `<div class="warnbox">${esc(lin.hint)}</div>` +
+      lin.layers.map(g=>`<div class="layer">
+        <div class="nm">${esc(g.layer)} · ${g.tables.length} 张表</div>
+        <div class="tb">${g.tables.map(t=>esc(t.table)+(t.alias?` <span style="color:#888">(${esc(t.alias)})</span>`:'')).join('、')}</div>
+        ${g.advice?`<div class="ad">→ 这一层数据不对时查：${esc(g.advice)}</div>`:''}
+      </div>`).join('');
+    q('#pb-probes').innerHTML = '<h4 style="margin:14px 0 8px">辅助排查 SQL（点击展开可复制）</h4>' +
+      r.probes.map((p,i)=>`<div class="seg" id="pr${i}">
+        <div class="hd" onclick="q('#pr${i}').classList.toggle('open')">
+          <span class="tag">${esc(p.no)}</span><b>${esc(p.title)}</b>
+          <span class="n">点击展开</span></div>
+        <pre>-- ${esc(p.why)}\n\n${esc(p.sql)}</pre></div>`).join('');
+    say(`识别 ${lin.total} 张依赖表 · ${r.probes.length} 条辅助 SQL`,'ok');
+  } finally { busy(false); }
+}
+
+/* ══ 表对应关系 ══ */
+async function mpDiscover(){
+  const j=await runJob('/api/mapping/discover-all',{
+    sourceCluster:q('#mp-source').value, targetCluster:q('#mp-target').value,
+    targetDb:q('#mp-target-db').value.trim(), prefix:q('#mp-prefix').value.trim()||'target_'
+  }, q('#mp-run'), '发现中…');
+  if(!j) return;
+  let html='<div class="verdict ok" style="margin-top:8px"><b>认出 '+j.matched+' 张，涉及 '+
+    j.db_count+' 个源库</b>源端共 '+j.source_dbs.length+' 个库，'+j.target_db+' 共 '+j.target_total+' 张表。已存盘，'+
+    '「库数据对比」选「用已存的对应关系」即可直接使用</div>';
+  html+='<div class="tablewrap"><table><thead><tr><th>源库</th><th>对应表数</th><th>示例</th></tr></thead><tbody>'+
+    j.summary.map(s=>'<tr><td><b>'+esc(s.db)+'</b></td><td class="num">'+s.count+
+      '</td><td>'+esc((s.sample||[]).join('；'))+'</td></tr>').join('')+'</tbody></table></div>';
+  if(j.unknown_total){
+    const pf=Object.entries(j.unknown_prefix||{}).map(([k,v])=>esc(k)+'('+v+')').join('、');
+    html+='<div class="warnbox">另有 '+j.unknown_total+' 张目标表无法按当前源库命名规则归类，'+
+      '说明它们来自别的源系统：'+pf+'。想配这些，把上面左边的集群换成对应的源集群再跑一次。</div>';
+  }
+  q('#mp-disc').innerHTML=html;
+  await mpGroups();
+  say('全库对应关系已发现并存盘','ok');
+}
+
+async function mpGroups(){
+  const r=await (await fetch('/api/mapping/groups')).json();
+  if(!r.ok) return say(r.msg,'err');
+  const sel=q('#mp-group'), keep=sel.value;
+  sel.innerHTML=r.groups.length
+    ? r.groups.map(g=>'<option value="'+esc(g.key)+'">'+
+        (g.kind==='discovered_map'?'【全库】':'【手工】')+esc(g.key)+
+        ' — '+g.count+' 张'+(g.db_count?'／'+g.db_count+' 个库':'')+'</option>').join('')
+    : '<option value="">（还没有存过对应关系）</option>';
+  if(keep && r.groups.some(g=>g.key===keep)) sel.value=keep;
+  q('#mp-ginfo').textContent='共 '+r.groups.length+' 组 · 存在 '+r.file;
+  if(r.groups.length) await mpLoad();
+}
+
+async function mpLoad(){
+  const key=q('#mp-group').value;
+  if(!key) return;
+  const r=await post('/api/mapping/list',{key, db:q('#mp-db').value,
+    kw:q('#mp-kw').value.trim(), limit:500});
+  if(!r.ok) return say(r.msg,'err');
+  ST.mp=r;
+  const dbSel=q('#mp-db'), keepDb=dbSel.value;
+  dbSel.innerHTML='<option value="">全部源库</option>'+
+    r.dbs.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');
+  if(r.dbs.includes(keepDb)) dbSel.value=keepDb;
+  const t=q('#mp-table'), e=q('#mp-empty');
+  if(!r.items.length){ t.style.display='none'; e.style.display='block';
+    e.textContent='这一组里没有符合条件的对应关系'; q('#mp-info').textContent=''; return; }
+  e.style.display='none'; t.style.display='table';
+  t.innerHTML='<thead><tr><th style="width:34px"></th>'+(r.kind==='discovered_map'?'<th>源库</th>':'')+
+    '<th>A 侧表名</th><th>B 侧表名</th></tr></thead><tbody>'+
+    r.items.map(i=>'<tr><td><input type="checkbox" class="mp-ck" value="'+esc(i.a)+'"></td>'+
+      (r.kind==='discovered_map'?'<td>'+esc(i.db)+'</td>':'')+
+      '<td>'+esc(i.a)+'</td><td>'+esc(i.b)+'</td></tr>').join('')+'</tbody>';
+  q('#mp-info').textContent=`共 ${r.total} 条${r.total>r.items.length?'（只显示前 '+r.items.length+' 条，可用关键词收窄）':''} · 存于 ${r.saved_at}`;
+}
+
+async function mpEdit(replace){
+  const key=q('#mp-key').value.trim() || q('#mp-group').value;
+  if(!key) return alert('请填一个分组名，或先在上面选一组');
+  const text=q('#mp-text').value.trim();
+  if(!text && !replace) return alert('请在下面的框里写表名对应');
+  if(replace && !confirm('整组替换会把「'+key+'」原有的对应关系全部清掉，只留下面框里写的。继续？')) return;
+  const r=await post('/api/mapping/edit',{key, text, replace});
+  if(!r.ok){ q('#mp-edit').textContent=''; return alert(r.msg); }
+  q('#mp-edit').textContent=`已${replace?'替换':'新增'} ${r.added} 条，该组现有 ${r.count} 条`;
+  q('#mp-text').value='';
+  await mpGroups();
+  say(`对应关系已保存：${key} 共 ${r.count} 条`,'ok');
+}
+
+async function mpDrop(){
+  const key=q('#mp-group').value;
+  if(!key) return alert('请先选一组对应关系');
+  const drop=qa('.mp-ck').filter(c=>c.checked).map(c=>c.value);
+  if(!drop.length) return alert('请先勾选要删除的行');
+  if((ST.mp||{}).kind==='discovered_map')
+    return alert('这是连库自动发现的分组，删单条没意义（重新发现就会回来）。\n' +
+      '要维护例外，请在下面「存到分组」里另起一个手工分组。');
+  if(!confirm('确定删除勾选的 '+drop.length+' 条对应关系？')) return;
+  const r=await post('/api/mapping/edit',{key, drop});
+  if(!r.ok) return alert(r.msg);
+  q('#mp-edit').textContent=`已删除 ${r.dropped} 条，该组现有 ${r.count} 条`;
+  await mpGroups();
+  say('已删除 '+r.dropped+' 条','ok');
+}
+
+q('#mp-kw').addEventListener('keydown', e=>{ if(e.key==='Enter') mpLoad(); });
+
+/* ══ 文件比对（Excel / CSV）══ */
+async function xdUpload(){
+  const fa=q('#xd-fa').files[0], fb=q('#xd-fb').files[0];
+  if(!fa || !fb) return alert('请把两个文件都选上');
+  const fd=new FormData(); fd.append('file_a',fa); fd.append('file_b',fb);
+  busy(true); say('上传并读取列名…');
+  try{
+    const r=await (await fetch('/api/xdiff/upload',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    if(!r.ok){ say(r.msg,'err'); q('#xd-cols').innerHTML='<div class="warnbox">'+esc(r.msg)+'</div>'; return; }
+    ST.xd=r;
+    q('#xd-up').textContent=`A ${r.rows_a} 行 / B ${r.rows_b} 行，共有列 ${r.common.length} 个`;
+    let html='<div class="verdict '+((r.only_a.length||r.only_b.length)?'warn':'ok')+
+      '" style="margin-top:8px"><b>共有列 '+r.common.length+' 个，参与逐格对比</b>'+
+      esc(r.common.slice(0,14).join(' / '))+(r.common.length>14?' …':'');
+    if(r.only_a.length) html+='<br>只有 A 有：'+esc(r.only_a.join('、'))+'（不参与对比）';
+    if(r.only_b.length) html+='<br>只有 B 有：'+esc(r.only_b.join('、'))+'（不参与对比）';
+    html+='</div>';
+    q('#xd-cols').innerHTML=html;
+    // 主键按实测唯一率推荐：选错主键会让差异数莫名膨胀
+    const g=r.key_guess||[];
+    const pick=g.filter(x=>x.unique).slice(0,1);
+    q('#xd-keys').value=(pick.length?pick:g.slice(0,1)).map(x=>x.column).join(',');
+    q('#xd-keyhint').innerHTML=g.length
+      ? '候选：'+g.map(x=>esc(x.column)+'（唯一率 '+(x.unique_rate*100).toFixed(1)+'%'+
+          (x.blank?'，'+x.blank+'个空值':'')+'）').join('　')
+      : '';
+    ['#xd-keyrow','#xd-optrow','#xd-runrow'].forEach(s=>q(s).style.display='flex');
+    say('已读取列名，确认主键后开始比对','ok');
+  } finally { busy(false); }
+}
+
+function xdBody(){
+  const s=ST.xd||{};
+  return {token_a:s.token_a, token_b:s.token_b, name_a:s.name_a, name_b:s.name_b,
+    keys:q('#xd-keys').value.split(',').map(x=>x.trim()).filter(Boolean),
+    case_sensitive:q('#xd-case').checked, trim_whitespace:q('#xd-trim').checked,
+    null_equals_empty:q('#xd-null').checked, strict_numeric:q('#xd-num').checked};
+}
+
+async function xdRun(){
+  if(!ST.xd) return alert('请先上传两个文件');
+  const j=await runJob('/api/xdiff/compare', xdBody(), q('#xd-run'), '比对中…');
+  if(!j) return;
+  ST.xdRes=j;
+  const s=j.stats, v=j.verdict;
+  q('#xd-verdict').innerHTML='<div class="verdict '+v.level+'"><b>'+esc(v.text)+
+    '</b>下一步：'+esc(v.next)+'</div>';
+  q('#xd-stats').innerHTML='<div class="stats">'+statHtml([
+    ['A 行数',s.rows_a],['B 行数',s.rows_b],
+    ['配上的行对',s.matched,'g'],
+    ['唯一主键',s.unique_keys],
+    ['重复主键',s.dup_keys, s.dup_keys?'w':''],
+    ['仅 A 有',s.truly_only_a, s.truly_only_a?'e':''],
+    ['仅 B 有',s.truly_only_b, s.truly_only_b?'e':''],
+    ['重复组未配上 A',s.dup_unmatched_a, s.dup_unmatched_a?'w':''],
+    ['重复组未配上 B',s.dup_unmatched_b, s.dup_unmatched_b?'w':''],
+    ['字段值差异',s.diff_cells, s.diff_cells?'e':'g'],
+  ])+'</div>';
+  const keys=s.keys;
+  let html='';
+  if(j.diffs.length){
+    html+='<h4>字段值差异（前 '+j.diffs.length+' 条）</h4><div class="tablewrap"><table>'+
+      '<thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+
+      '<th>列名</th><th>A 的值</th><th>B 的值</th><th>A 行</th><th>B 行</th></tr></thead><tbody>'+
+      j.diffs.map(d=>'<tr>'+keys.map(k=>'<td>'+esc(d.key[k])+'</td>').join('')+
+        '<td><b>'+esc(d.column)+'</b></td><td class="diffcell">'+esc(d.value_a)+
+        '</td><td class="diffcell">'+esc(d.value_b)+'</td><td class="num">'+d.row_a+
+        '</td><td class="num">'+d.row_b+'</td></tr>').join('')+
+      '</tbody></table></div>';
+  }
+  for(const [side,items,label] of [['a',j.only_a,'仅 A 有'],['b',j.only_b,'仅 B 有']]){
+    if(!items.length) continue;
+    html+='<h4>'+label+'（'+items.length+' 行）</h4><div class="tablewrap"><table>'+
+      '<thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+
+      '<th>情况</th><th>行号</th>'+s.cmp_cols.slice(0,8).map(c=>'<th>'+esc(c)+'</th>').join('')+
+      '</tr></thead><tbody>'+
+      items.map(d=>'<tr>'+keys.map(k=>'<td>'+esc(d.key[k])+'</td>').join('')+
+        '<td>'+(d.type.startsWith('only')?'主键在对侧不存在':'重复组内没配上')+
+        '</td><td class="num">'+d.row+'</td>'+
+        s.cmp_cols.slice(0,8).map(c=>'<td>'+esc(d['val_'+c])+'</td>').join('')+
+        '</tr>').join('')+'</tbody></table></div>';
+  }
+  q('#xd-out').innerHTML=html;
+  q('#xd-info').textContent=`比了 ${s.cmp_cols.length} 个共有列`;
+  say('比对完成 · '+v.text, v.level==='ok'?'ok':'err');
+}
+
+async function xdExport(){
+  if(!ST.xd) return alert('请先上传两个文件');
+  const j=await runJob('/api/xdiff/export', xdBody(), q('#xd-run'), '导出中…');
+  if(!j) return;
+  say(`已导出 ${j.file}（${j.size}）`,'ok');
+  alert(`报告已保存：\n${j.path}`);
+}
+
+/* ══ Excel 转换 ══ */
+/* 选完文件先探测工作表：转出空文件的头号原因是数据不在第一个 sheet */
+async function probeSheets(prefix){
+  const f = q('#'+prefix+'-file').files[0];
+  if(!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  busy(true); say('探测工作表…');
+  try{
+    const r = await (await fetch('/api/excel/sheets',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    if(!r.ok){ say(r.msg,'err'); q('#'+prefix+'-probe').innerHTML =
+      '<div class="warnbox">'+esc(r.msg)+'</div>'; return; }
+    const sel = q('#'+prefix+'-sheet');
+    if(sel) sel.innerHTML = '<option value="">（自动：'+esc(r.picked)+'）</option>' +
+      r.sheets.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.name)+
+        ' — '+s.rows+'行/'+s.cols+'列，'+s.filled+'个非空格</option>').join('');
+    let html = '<div class="verdict '+(r.preview_rows?'ok':'diff')+'" style="margin-top:8px">'+
+      '<b>已选中「'+esc(r.picked)+'」：读到 '+r.headers.length+' 列 × '+r.preview_rows+' 行</b>'+
+      (r.headers.length? '表头：'+r.headers.slice(0,8).map(esc).join(' / ')+
+        (r.headers.length>8?' …':'') : '这一页没读到表头');
+    if(r.sheets.length>1)
+      html += '<br>全部工作表：'+r.sheets.map(s=>esc(s.name)+'('+s.filled+')').join('、');
+    html += '</div>';
+    if(r.warnings && r.warnings.length)
+      html += '<div class="warnbox">'+r.warnings.map(esc).join('<br>')+'</div>';
+    q('#'+prefix+'-probe').innerHTML = html;
+    say(r.preview_rows? ('读到 '+r.preview_rows+' 行数据') :
+        '这一页没有数据行，请在「工作表」里手动选一个', r.preview_rows?'ok':'err');
+  } finally { busy(false); }
+}
+async function runExcel2Insert(){
+  const f = q('#ci-file').files[0], ddl = q('#ci-ddl').value.trim();
+  if(!f) return alert('请选择 Excel 文件');
+  if(!ddl) return alert('请贴入目标表的建表语句');
+  const fd = new FormData();
+  fd.append('file', f); fd.append('ddl', ddl); fd.append('batch', q('#ci-batch').value);
+  fd.append('sheet', q('#ci-sheet').value);
+  const btn=q('#ci-run'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 生成中…'; busy(true);
+  try{
+    const r = await (await fetch('/api/excel2insert',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    q('#ci-stats').innerHTML = statHtml([
+      ['目标表', esc(r.table), 'a'], ['数据行', r.row_count, 'g'],
+      ['INSERT 语句', r.stmt_count, 'a'], ['跳过空行', r.skipped_empty, ''],
+      ['匹配字段', r.matched_columns.length, 'g']]);
+    let warn = '';
+    if(r.missing_columns.length) warn +=
+      `<div class="warnbox"><b>DDL 有、Excel 没有的字段（${r.missing_columns.length} 个）</b>：
+       ${r.missing_columns.map(esc).join('、')}<br>这些字段不会出现在 INSERT 里，插入后为默认值/NULL。</div>`;
+    if(r.unmatched_header.length) warn +=
+      `<div class="warnbox"><b>Excel 有、DDL 没有的表头（${r.unmatched_header.length} 个）</b>：
+       ${r.unmatched_header.map(esc).join('、')}<br>这些列被忽略了，请确认是否表头写错。</div>`;
+    q('#ci-warn').innerHTML = warn;
+    q('#ci-out').style.display='block';
+    q('#ci-sql').value = r.preview + (r.sql_truncated ? '\n\n-- …（预览截断，完整内容见下载的 .sql 文件）' : '');
+    q('#ci-file-info').innerHTML =
+      `已保存 <a href="/download/${encodeURIComponent(r.file)}">${esc(r.file)}</a>（${r.size}）`;
+    say(`生成完成 · ${r.row_count} 行 / ${r.stmt_count} 条语句`,'ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+async function runExcel2Doc(){
+  const f = q('#cd-file').files[0];
+  if(!f) return alert('请选择 Excel 文件');
+  const fd = new FormData();
+  fd.append('file', f); fd.append('format', q('#cd-fmt').value);
+  fd.append('landscape', q('#cd-land').checked?'1':'0');
+  fd.append('title', q('#cd-title').value);
+  fd.append('sheet', q('#cd-sheet').value);
+  fd.append('max_rows', q('#cd-rows').value);
+  const btn=q('#cd-run'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 转换中…'; busy(true);
+  try{
+    const r = await (await fetch('/api/excel2doc',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    let extra = '';
+    if(r.warnings && r.warnings.length)
+      extra = '<div class="warnbox" style="margin-top:8px">'+r.warnings.map(esc).join('<br>')+'</div>';
+    q('#cd-out').innerHTML = `<div class="verdict ${r.rows?'ok':'diff'}"><b>${r.rows?'转换完成':'转出来是空的'}</b>
+      <a href="/download/${encodeURIComponent(r.file)}">${esc(r.file)}</a>（${r.size}）·
+      工作表「${esc(r.sheet||'')}」· ${r.rows} 行 × ${r.cols} 列${r.font?' · 字体 '+esc(r.font):''}
+      ${r.truncated?'<br>⚠️ 行数过多已截断':''}
+      ${r.rows?'':'<br>换个工作表再试，或确认源文件这一页确实有数据'}</div>` + extra;
+    say(`已生成 ${r.file}（${r.size}，${r.rows} 行）`, r.rows?'ok':'err');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+
+/* ══ 图片 → Excel ══ */
+async function runImg2Rows(){
+  const f = q('#im-file').files[0];
+  if(!f) return alert('请选择图片');
+  const fd = new FormData();
+  fd.append('file', f); fd.append('min_fill', q('#im-fill').value);
+  const btn=q('#im-run'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ 识别中…'; busy(true); say('调用系统 OCR…');
+  try{
+    const r = await (await fetch('/api/image2rows',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    ST.imgRows = r.rows;
+    const head = q('#im-head').checked && r.rows.length>1;
+    render('im', head ? r.rows[0] : (r.rows[0]||[]).map((_,i)=>'列'+(i+1)),
+                 head ? r.rows.slice(1) : r.rows);
+    q('#im-info').textContent =
+      `${r.block_count} 个文字块 → ${r.row_count} 行 × ${r.col_count} 列 · 置信度 ${r.avg_conf}`;
+    q('#im-warn').innerHTML = r.warning
+      ? `<div class="warnbox">${esc(r.warning)}${r.low_conf_texts.length?
+          '<br>低置信度片段：'+r.low_conf_texts.map(esc).join('、'):''}</div>` : '';
+    say(`识别完成 · ${r.row_count} 行 × ${r.col_count} 列`,'ok');
+  } finally { busy(false); btn.disabled=false; btn.textContent=old; }
+}
+async function exportImg2Xlsx(){
+  const rows = ST.imgRows;
+  if(!rows || !rows.length) return alert('请先识别图片');
+  const head = q('#im-head').checked && rows.length>1;
+  await doExport({'数据': head ? [rows[0], rows.slice(1)] : [[], rows]},
+                 q('#im-name').value || '图片转Excel');
+}
+
+/* ── 5. 文本转 Excel ── */
+const DELIM = {auto:'auto', tab:'\t', pipe:'|', comma:',', space:'  '};
+async function runText2Rows(){
+  const text = q('#tx-text').value;
+  if(!text.trim()) return alert('请先粘贴文本');
+  const r = await post('/api/text2rows', {text, delim:DELIM[q('#tx-delim').value]});
+  if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+  ST.txRows = r.rows;
+  const head = q('#tx-head').checked && r.rows.length>1;
+  render('tx', head ? r.rows[0] : r.rows[0].map((_,i)=>'列'+(i+1)),
+              head ? r.rows.slice(1) : r.rows);
+  const tip = `${r.total} 行 × ${r.cols} 列` + (r.total>r.rows.length?`（预览前 ${r.rows.length} 行）`:'');
+  q('#tx-info').textContent = tip; say('解析成功 · '+tip, 'ok');
+}
+async function exportText2Xlsx(){
+  if(!ST.txRows) await runText2Rows();
+  const rows = ST.txRows; if(!rows) return;
+  const head = q('#tx-head').checked && rows.length>1;
+  await doExport({'数据': head ? [rows[0], rows.slice(1)] : [[], rows]},
+                 q('#tx-name').value || '文本转Excel');
+}
+
+/* ── 通用导出 ── */
+async function exportTable(prefix, name){
+  const d = ST[prefix];
+  if(!d || !d.rows.length) return alert('没有可导出的内容');
+  const suffix = prefix==='rc' && ST.rcDb ? ST.rcDb+'_' : '';
+  await doExport({[name.slice(0,30)]: [d.headers, d.rows]}, suffix+name);
+}
+async function doExport(sheets, name){
+  busy(true); say('导出中…');
+  try{
+    const r = await post('/api/export', {sheets, name, format:'xlsx'});
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    say(`已导出 ${r.file}（${r.size}）`, 'ok');
+    if(confirm(`已生成 ${r.file}（${r.size}）\n\n现在下载？`)) location.href='/download/'+encodeURIComponent(r.file);
+  } finally { busy(false); }
+}
+
+/* ── 产物文件 ── */
+async function loadFiles(){
+  const r = await (await fetch('/api/files')).json();
+  if(!r.ok) return;
+  const t=q('#fl-table'), e=q('#fl-empty');
+  if(!r.items.length){ t.style.display='none'; e.style.display='block'; e.textContent='产物目录还没有文件'; return; }
+  e.style.display='none'; t.style.display='table';
+  t.innerHTML = '<thead><tr><th>文件名</th><th>大小</th><th>时间</th></tr></thead><tbody>' +
+    r.items.map(f=>`<tr><td><a href="/download/${encodeURIComponent(f.name)}">${esc(f.name)}</a></td>
+      <td class="num">${f.size}</td><td>${f.time}</td></tr>`).join('') + '</tbody>';
+}
+</script>
+</body>
+</html>
