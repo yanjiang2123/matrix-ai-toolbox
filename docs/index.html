@@ -6,10 +6,10 @@
   <title>数据库查询与数据核对集成工具｜实习项目</title>
   <meta name="description" content="基于实习工作场景开发的本地数据工具，整合 JDBC 查询、SQL 排查、数据比较、Excel 转换与 AI 辅助分析。">
   <meta property="og:title" content="数据库查询与数据核对集成工具">
-  <meta property="og:description" content="Python · Flask · Java/JDBC · Excel · AI｜实习项目与脱敏源码">
+  <meta property="og:description" content="Python · Flask · Java/JDBC · Excel · AI｜本地数据工具实习项目">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://yanjiang2123.github.io/matrix-ai-toolbox/">
-  <meta property="og:image" content="https://yanjiang2123.github.io/matrix-ai-toolbox/og-v2.png">
+  <meta property="og:image" content="https://yanjiang2123.github.io/matrix-ai-toolbox/og-simple.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -37,8 +37,8 @@
         </div>
         <dl class="hero-facts">
           <div><dt>技术栈</dt><dd>Python / Flask / Java JDBC</dd></div>
-          <div><dt>主要职责</dt><dd>需求拆解、功能整合、调试验证、脱敏交付</dd></div>
-          <div><dt>开发方式</dt><dd>Qoder 辅助开发</dd></div>
+          <div><dt>主要职责</dt><dd>需求拆解、功能整合、调试验证、版本交付</dd></div>
+          <div><dt>项目形态</dt><dd>本地 Web 工具</dd></div>
         </dl>
       </div>
 
@@ -51,18 +51,18 @@
           <li><span>03</span><div><b>数据文件</b><small>Excel / CSV 比较与转换</small></div></li>
           <li><span>04</span><div><b>AI</b><small>可选接入兼容模型接口</small></div></li>
         </ul>
-        <div class="runtime-note">本页面不连接数据库，也不处理任何公司数据</div>
+        <div class="runtime-note">在线页面用于项目介绍，完整功能在本地运行</div>
       </aside>
     </section>
 
     <section class="tool-preview wrap" aria-labelledby="preview-title">
       <div class="preview-heading">
-        <div><p class="section-label">真实运行界面</p><h2 id="preview-title">不是概念图，是已经运行起来的本地工具。</h2></div>
-        <p>截图展示运行时数据库连接页面。公开版本仅保留通用字段与占位配置，不包含真实地址、账号或密码。</p>
+        <div><p class="section-label">运行界面</p><h2 id="preview-title">本地工具的实际运行界面。</h2></div>
+        <p>截图展示运行时数据库连接页面，使用通用字段和占位配置说明连接流程。</p>
       </div>
       <figure>
         <img src="toolbox-ui.png" alt="Matrix 数据工具箱的本地 Web 运行界面，展示数据库运行时连接配置">
-        <figcaption><span>本地 Web 工作台</span><span>运行时连接</span><span>脱敏演示环境</span></figcaption>
+        <figcaption><span>本地 Web 工作台</span><span>运行时连接</span><span>项目演示</span></figcaption>
       </figure>
     </section>
 
@@ -76,8 +76,8 @@
       <article class="responsibility">
         <p class="section-label">个人职责</p>
         <h2>负责从需求到可演示交付。</h2>
-        <p>项目使用 Qoder 辅助生成和修改部分代码。个人工作重点是整理实际需求、设计操作流程、验证并修改生成代码、整合模块、处理运行问题，以及完成安全限制和公开版本脱敏。</p>
-        <div class="responsibility-tags"><span>需求拆解</span><span>流程设计</span><span>代码验证</span><span>模块整合</span><span>调试测试</span><span>脱敏交付</span></div>
+        <p>项目使用 Qoder 辅助生成和修改部分代码。个人工作重点是整理实际需求、设计操作流程、验证并修改生成代码、整合模块、处理运行问题，以及完成可运行版本的整理与交付。</p>
+        <div class="responsibility-tags"><span>需求拆解</span><span>流程设计</span><span>代码验证</span><span>模块整合</span><span>调试测试</span><span>版本交付</span></div>
       </article>
     </section>
 
@@ -124,7 +124,7 @@
         <article><span>连接安全</span><h3>敏感配置不进入仓库</h3><p>数据库和 AI 配置通过前端运行时填写，只保存在当前进程内存。账号、密码与 SQL 通过标准输入传给 Java 查询器，避免进入命令行参数。</p></article>
         <article><span>证据优先</span><h3>让 AI 基于解析结果推理</h3><p>先由本地解析器提取确定信息，再让模型解释语义影响。验证 SQL 仍需经过只读检查，且必须由使用者确认执行。</p></article>
         <article><span>数据核对</span><h3>处理重复主键带来的误报</h3><p>Excel / CSV 比较支持按主键分组，并在重复键组内进行匹配，而不是简单按文件行号逐行比较。</p></article>
-        <article><span>交付验证</span><h3>可启动、可测试、可脱敏分享</h3><p>仓库包含 Windows 一键启动、依赖清单和 14 项自动化测试，并提供空白配置示例和明确的已知边界。</p></article>
+        <article><span>交付验证</span><h3>可启动、可测试、可独立演示</h3><p>仓库包含 Windows 一键启动、依赖清单和 14 项自动化测试，并提供示例配置与清晰的运行说明。</p></article>
       </div>
     </section>
 
@@ -132,7 +132,7 @@
       <div>
         <p class="section-label light">项目总结</p>
         <h2>完成了一个能够独立演示的工具原型。</h2>
-        <p>项目将多项分散操作整合到一个本地工作台，并完成运行验证、安全限制、依赖整理和公开版本脱敏。没有真实统计的数据，不在页面中编造效率提升比例。</p>
+        <p>项目将多项分散操作整合到一个本地工作台，并完成运行验证、安全限制、依赖整理和演示版本交付。工具已在实习工作中实际运行，用于辅助数据库查询、SQL 排查、表数据量统计和 Excel 数据核对。</p>
         <a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">在 GitHub 查看源码与运行说明 ↗</a>
       </div>
       <aside>
