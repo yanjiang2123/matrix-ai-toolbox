@@ -3,94 +3,153 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Matrix AI 工具箱｜我的实习项目</title>
-  <meta name="description" content="我在实习工作中开发的本地数据处理工具：数据库查询、SQL 排查、数据核对、文件转换与 AI 辅助分析。">
-  <meta property="og:title" content="Matrix AI 工具箱｜我的实习项目">
-  <meta property="og:description" content="Python / Flask / JDBC / Excel / AI：一个来自真实工作场景的数据工具项目。">
+  <title>数据库查询与数据核对集成工具｜实习项目</title>
+  <meta name="description" content="基于实习工作场景开发的本地数据工具，整合 JDBC 查询、SQL 排查、数据比较、Excel 转换与 AI 辅助分析。">
+  <meta property="og:title" content="数据库查询与数据核对集成工具">
+  <meta property="og:description" content="Python · Flask · Java/JDBC · Excel · AI｜实习项目与脱敏源码">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="og.png">
+  <meta property="og:url" content="https://yanjiang2123.github.io/matrix-ai-toolbox/">
+  <meta property="og:image" content="https://yanjiang2123.github.io/matrix-ai-toolbox/og-v2.png">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#top"><span class="brand-mark">M</span><span>Matrix AI 工具箱</span></a>
+    <a class="brand" href="#top" aria-label="返回项目首页"><span class="brand-mark">M</span><span>数据工具项目</span></a>
     <nav aria-label="主要导航">
-      <a href="#features">我的实现</a>
-      <a href="#security">安全设计</a>
-      <a href="#interview">项目介绍</a>
-      <a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+      <a href="#background">项目背景</a>
+      <a href="#features">核心功能</a>
+      <a href="#architecture">技术实现</a>
+      <a href="#summary">项目总结</a>
+      <a class="nav-github" href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero wrap">
       <div class="hero-copy">
-        <p class="eyebrow">My internship project · Local-first data workflow</p>
-        <h1>我把日常 SQL 排查与数据核对，做成了一个本地工作台。</h1>
-        <p class="lede">这个项目来自我实习时遇到的真实问题：数据库查询、表数据量统计、SQL 排查、Excel 核对和格式转换分散在不同操作里。我把这些高频流程整合成了一个可在本机运行、可独立演示的数据工具。</p>
+        <p class="kicker"><span></span>实习项目 · 本地数据工作台</p>
+        <h1>数据库查询与<br>数据核对集成工具</h1>
+        <p class="lede">面向实习工作中的数据库查询、SQL 排查和 Excel 核对需求，将分散的重复操作整合为一个本地 Web 工作台，并加入基于代码证据的 AI 辅助分析。</p>
         <div class="actions">
-          <a class="primary" href="#features">查看我实现的功能</a>
-          <a class="secondary" href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">查看 GitHub 源码 ↗</a>
+          <a class="primary" href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">查看 GitHub 源码 ↗</a>
+          <a class="secondary" href="#features">了解核心功能</a>
         </div>
-        <ul class="proof">
-          <li><strong>14</strong><span>项自动化测试</span></li>
-          <li><strong>Python</strong><span>Flask 本地工作台</span></li>
-          <li><strong>脱敏</strong><span>可公开查看源码</span></li>
+        <dl class="hero-facts">
+          <div><dt>技术栈</dt><dd>Python / Flask / Java JDBC</dd></div>
+          <div><dt>主要职责</dt><dd>需求拆解、功能整合、调试验证、脱敏交付</dd></div>
+          <div><dt>开发方式</dt><dd>Qoder 辅助开发</dd></div>
+        </dl>
+      </div>
+
+      <aside class="runtime-card" aria-label="项目运行方式说明">
+        <div class="runtime-head"><span class="status-dot"></span><strong>完整工具在本地运行</strong></div>
+        <p>公开网站用于介绍项目。数据库连接、文件处理和 AI 调用均由使用者在自己的电脑上启动工具后完成。</p>
+        <ul>
+          <li><span>01</span><div><b>数据库</b><small>运行时配置 JDBC 连接</small></div></li>
+          <li><span>02</span><div><b>SQL</b><small>静态证据分析与只读检查</small></div></li>
+          <li><span>03</span><div><b>数据文件</b><small>Excel / CSV 比较与转换</small></div></li>
+          <li><span>04</span><div><b>AI</b><small>可选接入兼容模型接口</small></div></li>
         </ul>
-      </div>
-      <div class="sql-stage" aria-label="我实现的 SQL 差异分析示例">
-        <div class="stage-head"><span class="dots">● ● ●</span><span>SQL 差异分析 · 示例</span></div>
-        <div class="queries">
-          <div><b>SQL A</b><code>LEFT JOIN orders o</code><code>ON u.id = o.user_id</code><code>WHERE u.status = 1</code></div>
-          <div class="warn"><b>SQL B</b><code>INNER JOIN orders o</code><code>ON u.id = o.user_id</code><code>WHERE u.status = 1</code></div>
-        </div>
-        <div class="evidence"><b><i></i>我的分析结果</b><p>两段 SQL 的连接类型不同。INNER JOIN 会过滤没有订单的用户，这是结果行数发生变化时需要优先验证的原因。</p><span>本地规则证据</span><span>AI 补充推理</span></div>
-      </div>
+        <div class="runtime-note">本页面不连接数据库，也不处理任何公司数据</div>
+      </aside>
     </section>
 
-    <section class="stack wrap" aria-label="项目技术栈"><span>Python</span><span>Flask</span><span>Jinja2</span><span>Java / JDBC</span><span>openpyxl</span><span>OpenAI-compatible API</span></section>
+    <section class="tool-preview wrap" aria-labelledby="preview-title">
+      <div class="preview-heading">
+        <div><p class="section-label">真实运行界面</p><h2 id="preview-title">不是概念图，是已经运行起来的本地工具。</h2></div>
+        <p>截图展示运行时数据库连接页面。公开版本仅保留通用字段与占位配置，不包含真实地址、账号或密码。</p>
+      </div>
+      <figure>
+        <img src="toolbox-ui.png" alt="Matrix 数据工具箱的本地 Web 运行界面，展示数据库运行时连接配置">
+        <figcaption><span>本地 Web 工作台</span><span>运行时连接</span><span>脱敏演示环境</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="context wrap" id="background">
+      <article>
+        <p class="section-label">项目背景</p>
+        <h2>从真实的重复工作出发。</h2>
+        <p>日常数据排查需要在数据库客户端、SQL 脚本和 Excel 文件之间反复切换。表数据量统计、结果核对和格式转换步骤重复，问题定位也依赖人工经验。</p>
+        <p>项目目标不是重做一个数据库客户端，而是把高频排查流程放到同一个本地页面中，降低切换和重复录入成本。</p>
+      </article>
+      <article class="responsibility">
+        <p class="section-label">个人职责</p>
+        <h2>负责从需求到可演示交付。</h2>
+        <p>项目使用 Qoder 辅助生成和修改部分代码。个人工作重点是整理实际需求、设计操作流程、验证并修改生成代码、整合模块、处理运行问题，以及完成安全限制和公开版本脱敏。</p>
+        <div class="responsibility-tags"><span>需求拆解</span><span>流程设计</span><span>代码验证</span><span>模块整合</span><span>调试测试</span><span>脱敏交付</span></div>
+      </article>
+    </section>
 
     <section class="section wrap" id="features">
-      <div class="heading"><p class="eyebrow">What I implemented</p><h2>这些是我已经实现并验证过的核心能力。</h2><p>我围绕查询、排查、核对和转换四类工作任务组织功能，让使用者可以在同一个本地页面内完成操作。</p></div>
-      <div class="cards">
-        <article><em>01</em><h3>数据库查询与统计</h3><p>我通过 Java/JDBC 加载目标数据库驱动，支持在运行时填写连接信息、执行只读 SQL，并遍历数据库表、统计表行数。</p><div class="tags"><span>JDBC</span><span>只读检查</span><span>表行数统计</span></div></article>
-        <article><em>02</em><h3>SQL 拆分与 AI 排查</h3><p>我实现了多语句 SQL 拆分和静态差异分析，先提取 JOIN、过滤条件与字段等证据，再调用兼容模型接口补充语义影响和验证建议。</p><div class="tags"><span>SQL Parser</span><span>证据链</span><span>AI 建议</span></div></article>
-        <article><em>03</em><h3>数据库与文件核对</h3><p>我把数据库结果、单表数据和 Excel/CSV 文件的比较整合进工具，可按主键定位新增、缺失以及字段内容不一致的数据。</p><div class="tags"><span>结果集对比</span><span>Excel / CSV</span><span>差异定位</span></div></article>
-        <article><em>04</em><h3>结构化转换</h3><p>我实现了 Excel 转 INSERT SQL、PDF、Word，以及结构化文本转 Excel；图片识别结果也可以整理为 Excel，但当前 OCR 依赖 macOS Vision。</p><div class="tags"><span>openpyxl</span><span>文档导出</span><span>OCR</span></div></article>
+      <div class="section-heading">
+        <div><p class="section-label">已实现功能</p><h2>围绕查询、排查、核对和转换组织能力。</h2></div>
+        <p>以下能力均能在公开代码中找到对应模块；依赖外部环境的功能会明确标注运行条件。</p>
+      </div>
+      <div class="feature-grid">
+        <article><span class="feature-no">01</span><h3>只读查询与表统计</h3><p>运行时填写 JDBC URL、驱动类和驱动 JAR；执行只读 SQL，并读取表清单、元数据行数或精确 COUNT。</p><div><b>JDBC</b><b>只读检查</b><b>表行数统计</b></div></article>
+        <article><span class="feature-no">02</span><h3>SQL 拆分与逻辑排查</h3><p>拆分多语句和长 SQL，提取表、JOIN、过滤条件与字段差异，输出可以继续验证的静态证据。</p><div><b>SQL Parser</b><b>差异证据</b><b>验证建议</b></div></article>
+        <article><span class="feature-no">03</span><h3>AI 辅助分析</h3><p>在本地证据基础上调用兼容模型接口，区分直接证据、可能影响和待验证假设；生成内容不会自动执行。</p><div><b>可选能力</b><b>人工确认</b><b>安全复检</b></div></article>
+        <article><span class="feature-no">04</span><h3>数据库数据比较</h3><p>比较库表清单、表行数、字段和按主键抽样的明细数据，并支持维护不同环境之间的表名映射。</p><div><b>库级对比</b><b>单表对比</b><b>表映射</b></div></article>
+        <article><span class="feature-no">05</span><h3>Excel / CSV 文件核对</h3><p>按主键逐格比较文件，定位新增、缺失和字段不一致；重复键数据在组内进行匹配，减少误报。</p><div><b>openpyxl</b><b>主键比较</b><b>差异导出</b></div></article>
+        <article><span class="feature-no">06</span><h3>结构化文件转换</h3><p>支持 Excel 转 INSERT SQL、PDF、Word，以及结构化文本转 Excel；图片 OCR 当前依赖 macOS Vision。</p><div><b>INSERT</b><b>PDF / Word</b><b>文本转 Excel</b></div></article>
       </div>
     </section>
 
-    <section class="security wrap" id="security">
-      <div class="security-copy"><p class="eyebrow">How I made it safe</p><h2>我公开的是项目能力，不是公司的数据。</h2><p>为了把项目作为作品展示，我移除了公司环境、真实连接、账号密码、商业数据库驱动、测试数据和运行产物。公开仓库只保留通用实现和空白配置示例。</p></div>
-      <div class="checks">
-        <article><b>✓</b><div><h3>运行时连接</h3><p>我把数据库连接改成前端运行时配置，连接信息只保存在本机当前进程中，不写回项目配置文件。</p></div></article>
-        <article><b>✓</b><div><h3>密钥不入库</h3><p>AI 接口地址、模型和密钥由使用者运行时填写；公开网站与源码不包含公司账号、内部地址或密钥。</p></div></article>
-        <article><b>✓</b><div><h3>人工确认执行</h3><p>我让 AI 只负责生成分析和验证 SQL。建议必须通过本地只读检查，并由使用者确认后手动执行。</p></div></article>
+    <section class="architecture wrap" id="architecture">
+      <div class="architecture-copy">
+        <p class="section-label light">技术实现</p>
+        <h2>页面负责操作，Flask 负责编排，专业模块完成处理。</h2>
+        <p>项目保持本地优先：浏览器只访问 127.0.0.1，Flask 接收操作请求，再调用数据库、SQL、Excel 或 AI 模块。外部模型是可选增强，不影响本地规则能力。</p>
+      </div>
+      <div class="flow" aria-label="项目技术架构">
+        <div class="flow-main"><small>交互层</small><strong>浏览器界面</strong><span>Jinja2 + 原生 JavaScript</span></div>
+        <i>↓</i>
+        <div class="flow-main accent"><small>编排层</small><strong>Flask 本地服务</strong><span>路由、令牌、任务状态、安全检查</span></div>
+        <i>↓</i>
+        <div class="flow-modules">
+          <div><small>查询</small><strong>Java / JDBC</strong></div>
+          <div><small>分析</small><strong>SQL Tools</strong></div>
+          <div><small>文件</small><strong>openpyxl</strong></div>
+          <div><small>增强</small><strong>LLM API</strong></div>
+        </div>
       </div>
     </section>
 
     <section class="section wrap">
-      <div class="heading"><p class="eyebrow">What I would improve next</p><h2>我也会主动说明项目目前的边界。</h2></div>
-      <div class="limits">
-        <p><b>AI 能力</b>需要使用者提供兼容接口、模型和密钥。未配置模型时，本地规则分析仍然可以工作；模型结论必须人工复核。</p>
-        <p><b>数据库适配</b>需要使用者提供对应的 JDBC 驱动和可用 JDK。项目不包含商业驱动，大数据量比较仍需要继续完善分页和分片。</p>
-        <p><b>图片 OCR</b>当前实现依赖 macOS Vision，Windows 版本尚未完成 OCR 适配，因此我不会把它描述成全平台完整能力。</p>
+      <div class="section-heading compact">
+        <div><p class="section-label">关键实现</p><h2>面试中值得展开说明的技术点。</h2></div>
+      </div>
+      <div class="technical-grid">
+        <article><span>连接安全</span><h3>敏感配置不进入仓库</h3><p>数据库和 AI 配置通过前端运行时填写，只保存在当前进程内存。账号、密码与 SQL 通过标准输入传给 Java 查询器，避免进入命令行参数。</p></article>
+        <article><span>证据优先</span><h3>让 AI 基于解析结果推理</h3><p>先由本地解析器提取确定信息，再让模型解释语义影响。验证 SQL 仍需经过只读检查，且必须由使用者确认执行。</p></article>
+        <article><span>数据核对</span><h3>处理重复主键带来的误报</h3><p>Excel / CSV 比较支持按主键分组，并在重复键组内进行匹配，而不是简单按文件行号逐行比较。</p></article>
+        <article><span>交付验证</span><h3>可启动、可测试、可脱敏分享</h3><p>仓库包含 Windows 一键启动、依赖清单和 14 项自动化测试，并提供空白配置示例和明确的已知边界。</p></article>
       </div>
     </section>
 
-    <section class="interview wrap" id="interview">
-      <div class="interview-title"><p class="eyebrow">How I introduce this project</p><h2>面试时，我会这样介绍这个项目。</h2><p>重点不只是“我使用了 AI 辅助编程”，而是我如何从真实问题出发，拆解需求、整合功能、验证结果，并完成安全脱敏和可演示交付。</p></div>
-      <div class="story">
-        <article><span>01</span><div><h3>我发现的问题</h3><p>实习工作中，数据库查询、SQL 排查、Excel 数据核对和格式转换需要在多个工具之间反复切换，重复操作较多。</p></div></article>
-        <article><span>02</span><div><h3>我做的事情</h3><p>我将这些流程整理为 Python Flask 本地 Web 工作台，通过 JDBC 接入数据库，并增加有本地证据支撑的 AI 辅助分析。</p></div></article>
-        <article><span>03</span><div><h3>我完成的结果</h3><p>我完成了一个可运行、可安装、可测试、可脱敏公开的工具原型，并能够解释数据库连接、只读检查、SQL 比较和文件处理的实现流程。</p></div></article>
+    <section class="summary wrap" id="summary">
+      <div>
+        <p class="section-label light">项目总结</p>
+        <h2>完成了一个能够独立演示的工具原型。</h2>
+        <p>项目将多项分散操作整合到一个本地工作台，并完成运行验证、安全限制、依赖整理和公开版本脱敏。没有真实统计的数据，不在页面中编造效率提升比例。</p>
+        <a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">在 GitHub 查看源码与运行说明 ↗</a>
       </div>
+      <aside>
+        <h3>当前边界</h3>
+        <ul>
+          <li>数据库功能需要对应 JDBC 驱动与可用 JDK</li>
+          <li>AI 功能需要使用者提供兼容接口和模型配置</li>
+          <li>图片 OCR 目前仅适配 macOS Vision</li>
+          <li>大数据量比较仍需要继续完善分页与分片</li>
+        </ul>
+      </aside>
     </section>
   </main>
 
   <footer class="footer wrap">
-    <div><strong>Matrix AI 工具箱｜我的实习项目</strong><span>数据库查询 · SQL 排查 · 数据核对 · 文件转换 · AI 辅助分析</span></div>
-    <div class="footer-actions"><a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">GitHub 源码 ↗</a><a href="#top">返回顶部 ↑</a></div>
+    <div><strong>数据库查询与数据核对集成工具</strong><span>Python · Flask · Java/JDBC · Excel · AI</span></div>
+    <div class="footer-links"><a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">GitHub 源码 ↗</a><a href="#top">返回顶部 ↑</a></div>
   </footer>
 </body>
 </html>
