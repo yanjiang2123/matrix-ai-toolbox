@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6eee9">
+  <title>好久不见｜一句简单的问候</title>
+  <meta name="description" content="给一位老朋友的普通问候：愿你一切顺利，生活明亮。">
+  <style>
+    :root{--ink:#312435;--muted:#776b75;--wine:#9c405f;--deep:#6f2945;--paper:#f6eee9;--gold:#b9915f}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
+    button{font:inherit}.page{min-height:100vh;min-height:100svh;position:relative;overflow:hidden;background:radial-gradient(circle at 76% 22%,rgba(255,231,222,.98) 0 12%,transparent 34%),radial-gradient(circle at 9% 88%,rgba(219,178,194,.35),transparent 31%),linear-gradient(125deg,#f9f2ed 0%,#f4e9e6 54%,#eadbdf 100%);isolation:isolate}
+    .topbar{height:68px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(72,40,53,.13);position:relative;z-index:3}
+    .brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:10px Georgia,serif;letter-spacing:.09em}.mark{width:32px;height:32px;display:grid;place-items:center;border:1px solid rgba(49,36,53,.5);border-radius:50%;font-size:14px;font-style:italic}
+    .hero{min-height:calc(100svh - 68px);padding:36px 20px 42px;display:grid;gap:28px;align-items:center;position:relative}.copy{text-align:center;position:relative;z-index:2;animation:up .9s cubic-bezier(.22,1,.36,1) both}.eyebrow{margin:0 0 17px;color:var(--wine);font:700 8px Georgia,serif;letter-spacing:.15em}
+    h1{margin:0;font-family:"STSong","Songti SC",SimSun,serif;font-size:clamp(56px,16.5vw,70px);font-weight:400;line-height:.98;letter-spacing:-.1em}h1 span{color:var(--deep);font-style:italic}.intro{margin:23px 0 0;color:var(--muted);font:14px/1.75 "STSong","Songti SC",SimSun,serif;letter-spacing:.08em}
+    .actions{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:12px}.actions small{color:#8c7d83;font-size:9px;letter-spacing:.12em}.open{width:min(100%,320px);height:56px;padding:0 7px 0 24px;border:0;border-radius:100px;display:flex;align-items:center;justify-content:space-between;background:var(--deep);color:#fff8f3;font-size:13px;letter-spacing:.08em;box-shadow:0 15px 35px rgba(111,41,69,.2);cursor:pointer}.arrow{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#fff8f3;color:var(--deep);font-size:18px}
+    .scene{min-height:420px;position:relative;display:grid;place-items:center;perspective:1000px}.sun{position:absolute;width:min(78vw,315px);aspect-ratio:1;border-radius:50%;background:linear-gradient(155deg,rgba(255,241,222,.98),rgba(229,159,179,.82));box-shadow:inset -30px -22px 60px rgba(141,62,91,.12),0 35px 80px rgba(148,72,99,.18);animation:float 6s ease-in-out infinite}
+    .orbit{position:absolute;border:1px solid rgba(120,71,89,.2);border-radius:50%;animation:spin 20s linear infinite}.o1{width:min(96vw,375px);aspect-ratio:1}.o2{width:min(85vw,332px);aspect-ratio:1;border-style:dashed;animation-direction:reverse;animation-duration:28s}.star{position:absolute;color:var(--wine);font-size:22px;animation:twinkle 2.2s ease-in-out infinite}.s1{top:12%;right:7%}.s2{bottom:12%;left:7%;animation-delay:1s}
+    .wish-card{width:min(246px,70vw);aspect-ratio:.73;padding:20px;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2;overflow:hidden;background:rgba(255,251,246,.77);border:1px solid rgba(255,255,255,.8);box-shadow:0 30px 70px rgba(78,38,55,.18);backdrop-filter:blur(18px);transform:rotate(2.5deg);animation:card 1s .18s cubic-bezier(.2,.8,.2,1) both}.wish-card:before,.wish-card:after{content:"";position:absolute;border-radius:50%;border:1px solid rgba(156,64,95,.18)}.wish-card:before{width:210px;height:210px;top:58px;left:17px}.wish-card:after{width:150px;height:150px;top:88px;left:47px}
+    .card-head,.card-foot{display:flex;justify-content:space-between;align-items:center;color:#705d65;font:8px Georgia,serif;letter-spacing:.14em;position:relative;z-index:2}.line{height:1px;flex:1;margin:0 12px;background:rgba(112,93,101,.35)}.flower{width:66px;height:66px;display:grid;place-items:center;position:absolute;top:49%;left:50%;z-index:2;transform:translate(-50%,-58%);color:var(--wine);border:1px solid rgba(156,64,95,.42);border-radius:46% 54% 45% 55%;animation:morph 5s ease-in-out infinite,flower-spin 15s linear infinite}.flower:before,.flower:after{content:"";position:absolute;inset:9px;border:1px solid rgba(156,64,95,.34);border-radius:55% 45%;transform:rotate(45deg)}.flower:after{inset:17px;transform:rotate(-25deg)}.flower span{animation:reverse-spin 15s linear infinite}
+    .wish{align-self:center;width:84%;margin-top:auto;margin-bottom:28px;color:var(--deep);text-align:center;font:14px/1.8 "STSong","Songti SC",SimSun,serif;letter-spacing:.08em;position:relative;z-index:3;animation:wish .75s ease both}.strip{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(72,40,53,.13);background:rgba(255,250,245,.42)}.strip-title{grid-column:1/-1;min-height:88px}.strip-title,.item{padding:22px 15px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid rgba(72,40,53,.13)}.strip span{color:var(--wine);font:8px Georgia,serif;letter-spacing:.16em}.strip p{margin:18px 0 0;font-family:"STSong","Songti SC",SimSun,serif}.strip-title p{color:var(--muted);font-size:13px;letter-spacing:.14em}.item{min-height:105px}.item p{font-size:17px;letter-spacing:.06em}
+    .petals{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}.petals i{position:absolute;top:-30px;width:11px;height:16px;border-radius:80% 20% 75% 25%;background:rgba(190,94,124,.28);animation:fall 12s linear infinite}.petals i:nth-child(1){left:6%;animation-delay:-7s}.petals i:nth-child(2){left:15%;animation-delay:-2s;animation-duration:15s}.petals i:nth-child(3){left:25%;animation-delay:-10s;animation-duration:17s}.petals i:nth-child(4){left:35%;animation-delay:-4s}.petals i:nth-child(5){left:46%;animation-delay:-9s;animation-duration:16s}.petals i:nth-child(6){left:57%;animation-delay:-1s}.petals i:nth-child(7){left:67%;animation-delay:-6s;animation-duration:18s}.petals i:nth-child(8){left:78%;animation-delay:-12s}.petals i:nth-child(9){left:88%;animation-delay:-5s;animation-duration:16s}.petals i:nth-child(10){left:96%;animation-delay:-8s}
+    .backdrop{position:fixed;inset:0;z-index:30;display:none;place-items:center;padding:14px;background:rgba(57,34,45,.4);backdrop-filter:blur(12px)}.backdrop.show{display:grid;animation:fade .3s ease both}.note{width:min(520px,92vw);min-height:min(520px,calc(100svh - 28px));max-height:calc(100svh - 28px);padding:56px 34px 38px;overflow:auto;position:relative;background:linear-gradient(rgba(255,252,247,.97),rgba(250,240,233,.97));box-shadow:0 40px 100px rgba(52,27,38,.3);transform:rotate(-1deg);animation:note .65s cubic-bezier(.16,1,.3,1) both}.close{position:absolute;top:18px;right:18px;z-index:5;width:42px;height:42px;border:1px solid rgba(73,43,55,.18);border-radius:50%;background:rgba(255,250,245,.8);color:var(--ink);font-size:24px;cursor:pointer}.kicker{color:var(--wine);font:10px Georgia,serif;letter-spacing:.25em}.note h2{margin:24px 0 28px;font:400 clamp(37px,11vw,54px) "STSong","Songti SC",SimSun,serif}.note p{margin:0;color:#665960;font:15px/2 "STSong","Songti SC",SimSun,serif;letter-spacing:.08em}.sign{margin-top:32px;padding-top:18px;display:flex;justify-content:space-between;border-top:1px solid rgba(73,43,55,.18);color:#8a777f;font-size:11px;letter-spacing:.14em}
+    .deep{width:100%;height:54px;margin-top:24px;padding:0 18px;border:1px solid rgba(111,41,69,.24);border-radius:18px;display:flex;align-items:center;justify-content:space-between;background:rgba(156,64,95,.08);color:var(--deep);font-size:13px;letter-spacing:.1em;cursor:pointer;transition:.25s ease}.deep:hover{transform:translateY(-2px);background:rgba(156,64,95,.13)}
+    .intro-note.hide{display:none}.journey{display:none;min-height:390px;flex-direction:column}.journey.active{display:flex;animation:stage-in .55s cubic-bezier(.16,1,.3,1) both}.journey-head{padding-right:54px}.progress-label{display:flex;align-items:center;justify-content:space-between;color:#947b84;font:9px Georgia,serif;letter-spacing:.18em}.progress-line{height:2px;margin-top:12px;overflow:hidden;border-radius:8px;background:rgba(111,41,69,.1)}.progress-line i{display:block;width:33.33%;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--wine),#d49bad);transition:width .55s cubic-bezier(.16,1,.3,1)}
+    .journey h3{margin:38px 0 10px;font:400 clamp(27px,8vw,38px)/1.35 "STSong","Songti SC",SimSun,serif;letter-spacing:.02em}.journey-hint{color:#9a8a90!important;font-size:11px!important;line-height:1.7!important}.choices{display:grid;gap:11px;margin-top:28px}.choice{min-height:58px;padding:0 18px;border:1px solid rgba(111,41,69,.14);border-radius:16px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.43);color:#59424c;text-align:left;cursor:pointer;transition:.25s ease}.choice:hover,.choice:focus-visible{border-color:rgba(156,64,95,.4);background:rgba(156,64,95,.08);transform:translateX(3px);outline:none}.choice span:first-child{font:15px "STSong","Songti SC",SimSun,serif;letter-spacing:.08em}.choice span:last-child{color:var(--wine);font-size:15px}
+    .answer{display:none;margin-top:28px;padding:25px 22px;border:1px solid rgba(156,64,95,.14);border-radius:20px;background:rgba(255,250,246,.72)}.answer.show{display:block;animation:answer-in .55s ease both}.answer-mark{color:var(--wine);font-size:20px}.answer h4{margin:14px 0 12px;color:var(--deep);font:400 23px/1.45 "STSong","Songti SC",SimSun,serif}.answer p{font-size:14px!important;line-height:1.9!important}.continue{width:100%;height:52px;margin-top:17px;border:0;border-radius:16px;background:var(--deep);color:#fff9f4;font-size:12px;letter-spacing:.12em;cursor:pointer}.final-actions{display:flex;gap:10px;margin-top:20px}.final-actions button{flex:1;height:50px;border-radius:15px;cursor:pointer}.restart{border:1px solid rgba(111,41,69,.2);background:transparent;color:var(--deep)}.accept{border:0;background:var(--deep);color:#fff}.final-flower{width:76px;height:76px;margin:20px auto 8px;display:grid;place-items:center;border:1px solid rgba(156,64,95,.3);border-radius:46% 54% 45% 55%;color:var(--wine);animation:morph 4s ease-in-out infinite,spin 14s linear infinite}
+    @keyframes up{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}@keyframes card{from{opacity:0;transform:translateY(40px) rotate(8deg)}to{opacity:1;transform:rotate(2.5deg)}}@keyframes float{0%,100%{transform:translateY(-7px)}50%{transform:translateY(10px) scale(1.02)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes flower-spin{to{transform:translate(-50%,-58%) rotate(360deg)}}@keyframes reverse-spin{to{transform:rotate(-360deg)}}@keyframes morph{50%{border-radius:55% 45% 58% 42%}}@keyframes twinkle{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.2) rotate(15deg)}}@keyframes wish{from{opacity:0;transform:translateY(8px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}@keyframes fall{0%{transform:translate3d(0,-5vh,0) rotate(0);opacity:0}10%{opacity:1}60%{transform:translate3d(45px,65vh,0) rotate(250deg)}100%{transform:translate3d(-25px,115vh,0) rotate(520deg);opacity:0}}@keyframes fade{from{opacity:0}to{opacity:1}}@keyframes note{from{opacity:0;transform:translateY(35px) rotate(2deg) scale(.94)}to{opacity:1;transform:rotate(-1deg)}}@keyframes stage-in{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}@keyframes answer-in{from{opacity:0;transform:translateY(12px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+    @media(min-width:800px){.topbar{height:88px;padding:0 5vw}.hero{min-height:calc(100vh - 88px);padding:7vh 8vw;grid-template-columns:1fr 1fr;gap:6vw}.copy{text-align:left}.eyebrow{font-size:10px}.hero h1{font-size:clamp(72px,8vw,118px)}.intro{font-size:17px}.actions{align-items:flex-start}.scene{min-height:570px}.sun{width:min(35vw,490px)}.o1{width:min(43vw,610px)}.o2{width:min(38vw,540px)}.wish-card{width:min(350px,70vw);padding:28px}.flower{width:92px;height:92px}.wish{font-size:18px}.strip{grid-template-columns:1.35fr repeat(3,1fr)}.strip-title{grid-column:auto;min-height:170px}.item{min-height:170px}.strip-title,.item{padding:34px 4vw}.item p{font-size:23px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <main class="page" id="home">
+    <div class="petals" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <header class="topbar"><a class="brand" href="#home"><span class="mark">S</span><span>SUNDAY LETTER</span></a></header>
+    <section class="hero">
+      <div class="copy">
+        <p class="eyebrow">TO AN OLD FRIEND · 给一位老朋友</p>
+        <h1>嗨，<br><span>好久不见。</span></h1>
+        <p class="intro">没有什么特别的事情，<br>只是借这个小页面，送上一句普通的问候。</p>
+        <div class="actions"><button class="open" id="openWish"><span>看看今日份祝福</span><span class="arrow">↗</span></button><small>无需回复，看到就好</small></div>
+      </div>
+      <div class="scene" aria-label="动态祝福卡片">
+        <div class="orbit o1"></div><div class="orbit o2"></div><span class="star s1">✦</span><span class="star s2">✧</span><div class="sun"></div>
+        <article class="wish-card"><div class="card-head"><span>NO. 01</span><span id="today"></span></div><div class="flower"><span>✦</span></div><div class="wish" id="wish">愿你忙有所获，闲有所趣。</div><div class="card-foot"><span>GOOD DAY</span><span class="line"></span><span>2026</span></div></article>
+      </div>
+    </section>
+    <section class="strip"><div class="strip-title"><span>01—03</span><p>三个小小祝愿</p></div><div class="item"><span>01</span><p>工作顺利</p></div><div class="item"><span>02</span><p>生活有趣</p></div><div class="item"><span>03</span><p>天天开心</p></div></section>
+  </main>
+  <div class="backdrop" id="modal">
+    <article class="note" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+      <button class="close" id="closeWish" aria-label="关闭">×</button>
+      <div class="intro-note" id="introNote">
+        <span class="kicker">TODAY'S WISH</span>
+        <h2 id="noteTitle">愿你一切都好。</h2>
+        <p>愿最近的日子顺顺利利，忙碌有收获，休息也自在。天气好的时候多出去走走，在自己的节奏里，过好每一天。</p>
+        <div class="sign"><span>一句普通的祝福</span><span>☼</span></div>
+        <button class="deep" id="goDeeper"><span>如果愿意，再往里看看</span><span>→</span></button>
+      </div>
+      <div class="journey" id="journey" aria-live="polite">
+        <div class="journey-head">
+          <div class="progress-label"><span>A LITTLE JOURNEY</span><span id="progressText">01 / 03</span></div>
+          <div class="progress-line"><i id="progressBar"></i></div>
+        </div>
+        <div id="journeyBody"></div>
+      </div>
+    </article>
+  </div>
+  <script>
+    const wishes=["愿你忙有所获，闲有所趣。","愿生活常有小惊喜，也常有好天气。","愿你按照自己的节奏，轻松地向前走。"];let i=0;const wish=document.getElementById('wish');setInterval(()=>{i=(i+1)%wishes.length;wish.style.animation='none';wish.offsetHeight;wish.textContent=wishes[i];wish.style.animation='wish .75s ease both'},4200);
+    document.getElementById('today').textContent=new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
+    const modal=document.getElementById('modal'),introNote=document.getElementById('introNote'),journey=document.getElementById('journey'),journeyBody=document.getElementById('journeyBody'),progressText=document.getElementById('progressText'),progressBar=document.getElementById('progressBar');
+    const stages=[
+      {q:'最近的你，更像哪一种天气？',hint:'没有标准答案，选一个此刻最接近的。',options:[
+        {label:'晴天',mark:'☀',title:'晴朗，自有它的光',text:'愿那些明亮的时刻，不必盛大，也能在普通的一天里悄悄发生。愿你的笑意，来自真实而轻松的生活。'},
+        {label:'微风',mark:'≈',title:'风会带走一点疲惫',text:'愿你偶尔放慢脚步，让风经过肩头，也让忙碌暂时退到身后。松弛不是停下，而是更从容地向前。'},
+        {label:'小雨',mark:'◌',title:'雨天也不必急着放晴',text:'如果最近有一点疲惫，也没关系。愿你给自己安静的余地，等云慢慢散开，等心情重新变得轻盈。'}]},
+      {q:'此刻，更想为自己留住什么？',hint:'选择一种想带进明天的力量。',options:[
+        {label:'一点松弛',mark:'∿',title:'把日子过得舒展一些',text:'愿你不被匆忙催促，不为暂时的迟缓责怪自己。生活很长，按照舒服的节奏走，也会抵达想去的地方。'},
+        {label:'一点勇气',mark:'✦',title:'勇气从来不必声势浩大',text:'愿你在需要做决定的时候，相信自己的判断。哪怕只向前一小步，也是在认真地靠近更好的生活。'},
+        {label:'一点好运',mark:'✧',title:'愿小小的好运正在路上',text:'愿好消息来得恰到好处，愿偶然遇见的风景让你开心，也愿认真生活的你，被世界温柔回应。'}]},
+      {q:'最后，想带走哪一句话？',hint:'这一句，只属于今天。',options:[
+        {label:'慢慢来',mark:'…',title:'不必赶路，也能抵达',text:'愿你不必追赶任何人的时钟。花有花期，人有自己的节奏；把今天过好，答案会在合适的时候出现。',final:'愿往后的日子不慌不忙，有时间看晚霞，也有心情等花开。慢慢走，沿途自会有属于你的风景。'},
+        {label:'相信自己',mark:'○',title:'你比想象中更有力量',text:'愿你少一点自我怀疑，多一点笃定从容。曾经走过的路，都在悄悄为今天的你积攒答案。',final:'愿你始终相信自己的选择，也始终保留重新出发的勇气。脚下有路，眼里有光，心中自有方向。'},
+        {label:'好好休息',mark:'☾',title:'今晚，把疲惫轻轻放下',text:'愿你允许自己暂时不做什么。关掉纷扰，留一点安静给自己；好好睡一觉，明天仍是新的开始。',final:'愿每一个疲惫的夜晚，都有安稳的睡眠接住你。醒来有清风、有朝阳，也有重新出发的轻盈。'}]}
+    ];
+    let stageIndex=0,selected=[];
+    function openModal(){modal.classList.add('show');introNote.classList.remove('hide');journey.classList.remove('active')}
+    function closeModal(){modal.classList.remove('show');stageIndex=0;selected=[]}
+    function startJourney(){introNote.classList.add('hide');journey.classList.add('active');stageIndex=0;selected=[];renderStage()}
+    function renderStage(){const s=stages[stageIndex];progressText.textContent=`0${stageIndex+1} / 03`;progressBar.style.width=`${(stageIndex+1)*33.333}%`;journeyBody.innerHTML=`<h3>${s.q}</h3><p class="journey-hint">${s.hint}</p><div class="choices">${s.options.map((o,n)=>`<button class="choice" data-choice="${n}"><span>${o.label}</span><span>${o.mark}</span></button>`).join('')}</div><div class="answer" id="answer"></div>`;journeyBody.querySelectorAll('.choice').forEach(btn=>btn.onclick=()=>choose(Number(btn.dataset.choice)))}
+    function choose(optionIndex){const o=stages[stageIndex].options[optionIndex];selected[stageIndex]=o;journeyBody.querySelector('.choices').style.display='none';const answer=document.getElementById('answer');answer.innerHTML=`<span class="answer-mark">${o.mark}</span><h4>${o.title}</h4><p>${o.text}</p><button class="continue">${stageIndex<stages.length-1?'继续深入':'看看最后的话'}</button>`;answer.classList.add('show');answer.querySelector('.continue').onclick=()=>{if(stageIndex<stages.length-1){stageIndex++;renderStage()}else{renderFinal()}}}
+    function renderFinal(){const ending=selected[2];progressText.textContent='03 / 03';progressBar.style.width='100%';journeyBody.innerHTML=`<div class="final-flower">✦</div><h3 style="text-align:center">这段话，留给今天的你</h3><div class="answer show"><h4>${ending.title}</h4><p>${ending.final}</p></div><div class="final-actions"><button class="restart" id="restart">重新看看</button><button class="accept" id="accept">收好祝福</button></div>`;document.getElementById('restart').onclick=startJourney;document.getElementById('accept').onclick=closeModal}
+    document.getElementById('openWish').onclick=openModal;document.getElementById('closeWish').onclick=closeModal;document.getElementById('goDeeper').onclick=startJourney;modal.onclick=e=>{if(e.target===modal)closeModal()};addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+  </script>
+</body>
+</html>
