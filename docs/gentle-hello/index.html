@@ -1365,7 +1365,7 @@
       </a>
       <div class="top-actions">
         <time class="today" id="today" aria-label="今天的日期"></time>
-        <button class="music-toggle" id="musicToggle" type="button" aria-label="轻音乐" aria-pressed="false" title="播放轻音乐">
+        <button class="music-toggle" id="musicToggle" type="button" aria-label="贝多芬古典配乐" aria-pressed="false" title="播放贝多芬古典配乐">
           <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
         </button>
       </div>
@@ -1424,7 +1424,7 @@
           </span>
         </div>
         <div class="journey-actions">
-          <button class="icon-button dialog-music-toggle" id="dialogMusicToggle" type="button" aria-label="轻音乐" aria-pressed="false" title="播放轻音乐">
+          <button class="icon-button dialog-music-toggle" id="dialogMusicToggle" type="button" aria-label="贝多芬古典配乐" aria-pressed="false" title="播放贝多芬古典配乐">
             <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
           </button>
           <button class="icon-button" id="closeButton" type="button" aria-label="关闭互动页面">×</button>
@@ -1593,13 +1593,26 @@
       let musicEnabled = false;
       let musicRunId = 0;
       let musicSources = new Set();
+      let pendingSuspendPromise = null;
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const musicProgression = [
-        { bass: 130.81, chord: [261.63, 329.63, 392.00], melody: [659.25, 783.99, 659.25, 523.25] },
-        { bass: 110.00, chord: [220.00, 261.63, 329.63], melody: [659.25, 523.25, 392.00, 523.25] },
-        { bass: 87.31, chord: [174.61, 220.00, 261.63], melody: [523.25, 659.25, 783.99, 659.25] },
-        { bass: 98.00, chord: [196.00, 220.00, 293.66], melody: [587.33, 659.25, 440.00, 587.33] }
+      const MOONLIGHT_BPM = 52;
+      const BEAT_SECONDS = 60 / MOONLIGHT_BPM;
+      const TRIPLET_SECONDS = BEAT_SECONDS / 3;
+      const BAR_SECONDS = BEAT_SECONDS * 4;
+      const midiToHz = (midi) => 440 * 2 ** ((midi - 69) / 12);
+
+      // Beethoven, Piano Sonata No. 14, Op. 27 No. 2, first movement.
+      // Public-domain composition; this compact 1–8 bar arrangement is rendered live in the browser.
+      const MOONLIGHT_BARS = [
+        { bass: [[49, 0, 4]], arp: [[56, 61, 64], [56, 61, 64], [56, 61, 64], [56, 61, 64]], melody: [] },
+        { bass: [[47, 0, 4]], arp: [[56, 61, 64], [56, 61, 64], [56, 61, 64], [56, 61, 64]], melody: [] },
+        { bass: [[45, 0, 2], [42, 2, 2]], arp: [[57, 61, 64], [57, 61, 64], [57, 62, 66], [57, 62, 66]], melody: [] },
+        { bass: [[44, 0, 2], [44, 2, 2]], arp: [[56, 60, 66], [56, 61, 64], [56, 61, 63], [54, 60, 63]], melody: [] },
+        { bass: [[49, 0, 4]], arp: [[52, 56, 61], [56, 61, 64], [56, 61, 64], [56, 61, 64]], melody: [[68, 3, 0.75], [68, 3.75, 0.25]] },
+        { bass: [[48, 0, 4]], arp: [[56, 63, 66], [56, 63, 66], [56, 63, 66], [56, 63, 66]], melody: [[68, 0, 3], [68, 3, 0.75], [68, 3.75, 0.25]] },
+        { bass: [[49, 0, 2], [42, 2, 2]], arp: [[56, 61, 64], [56, 61, 64], [57, 61, 66], [57, 61, 66]], melody: [[68, 0, 2], [69, 2, 2]] },
+        { bass: [[47, 0, 2], [47, 2, 2]], arp: [[56, 59, 64], [56, 59, 64], [57, 59, 63], [57, 59, 63]], melody: [[68, 0, 2], [66, 2, 1], [71, 3, 1]] }
       ];
 
       const now = new Date();
@@ -1655,10 +1668,10 @@
         const master = context.createGain();
         const compressor = context.createDynamicsCompressor();
 
-        dryGain.gain.value = 0.82;
-        wetGain.gain.value = 0.16;
+        dryGain.gain.value = 0.86;
+        wetGain.gain.value = 0.12;
         master.gain.value = 0.0001;
-        convolver.buffer = createImpulse(context);
+        convolver.buffer = createImpulse(context, 1.9, 2.8);
         compressor.threshold.value = -24;
         compressor.knee.value = 18;
         compressor.ratio.value = 3;
@@ -1679,7 +1692,7 @@
         musicSources = new Set();
       }
 
-      function scheduleTone(frequency, startTime, duration, level, type = "sine", attack = 0.7) {
+      function scheduleTone(frequency, startTime, duration, level, type = "sine", attack = 0.7, cutoff = 1500) {
         if (!audioContext || !audioInput) return;
         const context = audioContext;
         const input = audioInput;
@@ -1692,7 +1705,7 @@
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(frequency, startTime);
         filter.type = "lowpass";
-        filter.frequency.setValueAtTime(type === "triangle" ? 2400 : 1500, startTime);
+        filter.frequency.setValueAtTime(cutoff, startTime);
         filter.Q.value = 0.6;
 
         gain.gain.setValueAtTime(0.0001, startTime);
@@ -1714,15 +1727,28 @@
       }
 
       function scheduleBar(startTime, barIndex) {
-        const bar = musicProgression[barIndex % musicProgression.length];
-        scheduleTone(bar.bass, startTime, 7.7, 0.009, "sine", 0.85);
-        bar.chord.forEach((frequency, index) => {
-          scheduleTone(frequency, startTime + index * 0.06, 7.5, 0.008, index === 1 ? "triangle" : "sine", 0.8);
+        const bar = MOONLIGHT_BARS[barIndex % MOONLIGHT_BARS.length];
+
+        bar.bass.forEach(([midi, offset, duration]) => {
+          const noteTime = startTime + offset * BEAT_SECONDS;
+          const noteDuration = duration * BEAT_SECONDS * 0.98;
+          scheduleTone(midiToHz(midi), noteTime, noteDuration, 0.007, "sine", 0.42, 1050);
+          scheduleTone(midiToHz(midi + 12), noteTime, Math.min(noteDuration, 1.7), 0.0011, "sine", 0.28, 1250);
         });
-        bar.melody.forEach((frequency, index) => {
-          const noteTime = startTime + 0.65 + index * 1.62;
-          scheduleTone(frequency, noteTime, 1.35, 0.015, "sine", 0.06);
-          scheduleTone(frequency * 2, noteTime, 0.72, 0.0025, "sine", 0.035);
+
+        bar.arp.forEach((triad, beatIndex) => {
+          triad.forEach((midi, tripletIndex) => {
+            const noteTime = startTime + beatIndex * BEAT_SECONDS + tripletIndex * TRIPLET_SECONDS;
+            scheduleTone(midiToHz(midi), noteTime, TRIPLET_SECONDS * 3.05, 0.0075, "sine", 0.028, 1450);
+            scheduleTone(midiToHz(midi + 12), noteTime, TRIPLET_SECONDS * 1.15, 0.0009, "sine", 0.018, 1850);
+          });
+        });
+
+        bar.melody.forEach(([midi, offset, duration]) => {
+          const noteTime = startTime + offset * BEAT_SECONDS;
+          const noteDuration = Math.max(0.24, duration * BEAT_SECONDS * 0.97);
+          scheduleTone(midiToHz(midi), noteTime, noteDuration, 0.0135, "sine", 0.045, 1850);
+          scheduleTone(midiToHz(midi + 12), noteTime, Math.min(noteDuration, 0.72), 0.0018, "sine", 0.025, 2200);
         });
       }
 
@@ -1730,16 +1756,27 @@
         if (!musicEnabled || !audioContext || audioContext.state === "closed") return;
         while (nextBarTime < audioContext.currentTime + 1.4) {
           scheduleBar(nextBarTime, musicBarIndex);
-          nextBarTime += 8;
-          musicBarIndex = (musicBarIndex + 1) % musicProgression.length;
+          nextBarTime += BAR_SECONDS;
+          musicBarIndex = (musicBarIndex + 1) % MOONLIGHT_BARS.length;
         }
+      }
+
+      function startMusicScheduler() {
+        if (musicScheduler !== null) return;
+        musicScheduler = window.setInterval(scheduleMusicAhead, 550);
+      }
+
+      function stopMusicScheduler() {
+        if (musicScheduler === null) return;
+        window.clearInterval(musicScheduler);
+        musicScheduler = null;
       }
 
       function setMusicButton(active) {
         [musicToggle, dialogMusicToggle].forEach((button) => {
           button.setAttribute("aria-pressed", String(active));
-          button.setAttribute("aria-label", "轻音乐");
-          button.title = active ? "暂停轻音乐" : "播放轻音乐";
+          button.setAttribute("aria-label", "贝多芬古典配乐");
+          button.title = active ? "暂停贝多芬古典配乐" : "播放贝多芬古典配乐";
         });
       }
 
@@ -1750,20 +1787,24 @@
         setMusicButton(true);
         try {
           createAudioEngine();
+          pendingSuspendPromise = null;
           const contextForRun = audioContext;
           await contextForRun.resume();
           if (!musicEnabled || runId !== musicRunId || audioContext !== contextForRun) {
             contextForRun.close().catch(() => {});
             return;
           }
+          if (contextForRun.state !== "running") {
+            throw new Error("Audio context did not start");
+          }
           nextBarTime = contextForRun.currentTime + 0.08;
           musicBarIndex = 0;
           scheduleMusicAhead();
-          musicScheduler = window.setInterval(scheduleMusicAhead, 550);
+          startMusicScheduler();
           masterGain.gain.cancelScheduledValues(contextForRun.currentTime);
           masterGain.gain.setValueAtTime(0.0001, contextForRun.currentTime);
-          masterGain.gain.exponentialRampToValueAtTime(0.5, contextForRun.currentTime + 1.25);
-          showToast("轻音乐已开启");
+          masterGain.gain.exponentialRampToValueAtTime(0.42, contextForRun.currentTime + 1.25);
+          showToast("贝多芬古典配乐已开启");
         } catch (error) {
           if (runId === musicRunId) {
             stopMusic(false);
@@ -1775,11 +1816,9 @@
       function stopMusic(showMessage = true) {
         musicRunId += 1;
         musicEnabled = false;
+        pendingSuspendPromise = null;
         setMusicButton(false);
-        if (musicScheduler !== null) {
-          window.clearInterval(musicScheduler);
-          musicScheduler = null;
-        }
+        stopMusicScheduler();
 
         const contextToClose = audioContext;
         const gainToFade = masterGain;
@@ -1806,17 +1845,15 @@
         audioInput = null;
         masterGain = null;
         musicSources = new Set();
-        if (showMessage) showToast("轻音乐已暂停");
+        if (showMessage) showToast("贝多芬古典配乐已暂停");
       }
 
       function destroyMusicImmediately() {
         musicRunId += 1;
         musicEnabled = false;
+        pendingSuspendPromise = null;
         setMusicButton(false);
-        if (musicScheduler !== null) {
-          window.clearInterval(musicScheduler);
-          musicScheduler = null;
-        }
+        stopMusicScheduler();
         musicSources.forEach((source) => {
           try { source.stop(); } catch (error) {}
         });
@@ -1830,6 +1867,31 @@
       function toggleMusic() {
         if (musicEnabled) stopMusic();
         else startMusic();
+      }
+
+      async function restoreMusicAfterVisibility() {
+        if (!musicEnabled || !audioContext || audioContext.state === "closed") return;
+        const contextToResume = audioContext;
+        const resumeRunId = musicRunId;
+        const suspension = pendingSuspendPromise;
+
+        try {
+          if (suspension) await suspension;
+          if (pendingSuspendPromise === suspension) pendingSuspendPromise = null;
+          if (document.hidden || !musicEnabled || musicRunId !== resumeRunId || audioContext !== contextToResume) return;
+          if (contextToResume.state !== "running") await contextToResume.resume();
+          if (document.hidden || !musicEnabled || musicRunId !== resumeRunId || audioContext !== contextToResume) return;
+          if (contextToResume.state !== "running") throw new Error("Audio context did not resume");
+          if (nextBarTime < contextToResume.currentTime + 0.04) {
+            nextBarTime = contextToResume.currentTime + 0.08;
+          }
+          scheduleMusicAhead();
+          startMusicScheduler();
+        } catch (error) {
+          if (document.hidden || !musicEnabled || musicRunId !== resumeRunId || audioContext !== contextToResume) return;
+          stopMusic(false);
+          showToast("点击音乐按钮继续播放");
+        }
       }
 
       function updateProgress(step) {
@@ -2135,23 +2197,13 @@
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
           stopWishTimer();
-          if (musicEnabled && audioContext?.state === "running") audioContext.suspend().catch(() => {});
+          stopMusicScheduler();
+          if (musicEnabled && audioContext?.state === "running") {
+            pendingSuspendPromise = audioContext.suspend().catch(() => {});
+          }
         } else {
           if (experience.hidden) startWishTimer();
-          if (musicEnabled && audioContext?.state === "suspended") {
-            const contextToResume = audioContext;
-            contextToResume.resume().then(() => {
-              if (!musicEnabled || audioContext !== contextToResume) return;
-              if (contextToResume.state !== "running") {
-                stopMusic(false);
-                showToast("点击音乐按钮继续播放");
-              }
-            }).catch(() => {
-              if (!musicEnabled || audioContext !== contextToResume) return;
-              stopMusic(false);
-              showToast("点击音乐按钮继续播放");
-            });
-          }
+          restoreMusicAfterVisibility();
         }
       });
       window.addEventListener("pagehide", destroyMusicImmediately);
