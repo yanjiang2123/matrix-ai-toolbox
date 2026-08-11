@@ -3,97 +3,1813 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f6eee9">
-  <title>好久不见｜一句简单的问候</title>
-  <meta name="description" content="给一位老朋友的普通问候：愿你一切顺利，生活明亮。">
+  <meta name="theme-color" content="#f3ebe6">
+  <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>给今天留一小格好天气</title>
+  <meta name="description" content="三次轻轻的选择，换一张适合此刻的祝福。没有任务，也不用回复。">
+  <link rel="canonical" href="https://yanjiang2123.github.io/matrix-ai-toolbox/gentle-hello/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="给今天留一小格好天气">
+  <meta property="og:description" content="一份安静、轻松的互动问候。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:url" content="https://yanjiang2123.github.io/matrix-ai-toolbox/gentle-hello/">
+  <meta property="og:image" content="https://yanjiang2123.github.io/matrix-ai-toolbox/gentle-hello/og-hello-v2.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="给今天留一小格好天气">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="给今天留一小格好天气">
+  <meta name="twitter:description" content="一份安静、轻松的互动问候。">
+  <meta name="twitter:image" content="https://yanjiang2123.github.io/matrix-ai-toolbox/gentle-hello/og-hello-v2.png">
   <style>
-    :root{--ink:#312435;--muted:#776b75;--wine:#9c405f;--deep:#6f2945;--paper:#f6eee9;--gold:#b9915f}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
-    button{font:inherit}.page{min-height:100vh;min-height:100svh;position:relative;overflow:hidden;background:radial-gradient(circle at 76% 22%,rgba(255,231,222,.98) 0 12%,transparent 34%),radial-gradient(circle at 9% 88%,rgba(219,178,194,.35),transparent 31%),linear-gradient(125deg,#f9f2ed 0%,#f4e9e6 54%,#eadbdf 100%);isolation:isolate}
-    .topbar{height:68px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(72,40,53,.13);position:relative;z-index:3}
-    .brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:10px Georgia,serif;letter-spacing:.09em}.mark{width:32px;height:32px;display:grid;place-items:center;border:1px solid rgba(49,36,53,.5);border-radius:50%;font-size:14px;font-style:italic}
-    .hero{min-height:calc(100svh - 68px);padding:36px 20px 42px;display:grid;gap:28px;align-items:center;position:relative}.copy{text-align:center;position:relative;z-index:2;animation:up .9s cubic-bezier(.22,1,.36,1) both}.eyebrow{margin:0 0 17px;color:var(--wine);font:700 8px Georgia,serif;letter-spacing:.15em}
-    h1{margin:0;font-family:"STSong","Songti SC",SimSun,serif;font-size:clamp(56px,16.5vw,70px);font-weight:400;line-height:.98;letter-spacing:-.1em}h1 span{color:var(--deep);font-style:italic}.intro{margin:23px 0 0;color:var(--muted);font:14px/1.75 "STSong","Songti SC",SimSun,serif;letter-spacing:.08em}
-    .actions{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:12px}.actions small{color:#8c7d83;font-size:9px;letter-spacing:.12em}.open{width:min(100%,320px);height:56px;padding:0 7px 0 24px;border:0;border-radius:100px;display:flex;align-items:center;justify-content:space-between;background:var(--deep);color:#fff8f3;font-size:13px;letter-spacing:.08em;box-shadow:0 15px 35px rgba(111,41,69,.2);cursor:pointer}.arrow{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#fff8f3;color:var(--deep);font-size:18px}
-    .scene{min-height:420px;position:relative;display:grid;place-items:center;perspective:1000px}.sun{position:absolute;width:min(78vw,315px);aspect-ratio:1;border-radius:50%;background:linear-gradient(155deg,rgba(255,241,222,.98),rgba(229,159,179,.82));box-shadow:inset -30px -22px 60px rgba(141,62,91,.12),0 35px 80px rgba(148,72,99,.18);animation:float 6s ease-in-out infinite}
-    .orbit{position:absolute;border:1px solid rgba(120,71,89,.2);border-radius:50%;animation:spin 20s linear infinite}.o1{width:min(96vw,375px);aspect-ratio:1}.o2{width:min(85vw,332px);aspect-ratio:1;border-style:dashed;animation-direction:reverse;animation-duration:28s}.star{position:absolute;color:var(--wine);font-size:22px;animation:twinkle 2.2s ease-in-out infinite}.s1{top:12%;right:7%}.s2{bottom:12%;left:7%;animation-delay:1s}
-    .wish-card{width:min(246px,70vw);aspect-ratio:.73;padding:20px;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2;overflow:hidden;background:rgba(255,251,246,.77);border:1px solid rgba(255,255,255,.8);box-shadow:0 30px 70px rgba(78,38,55,.18);backdrop-filter:blur(18px);transform:rotate(2.5deg);animation:card 1s .18s cubic-bezier(.2,.8,.2,1) both}.wish-card:before,.wish-card:after{content:"";position:absolute;border-radius:50%;border:1px solid rgba(156,64,95,.18)}.wish-card:before{width:210px;height:210px;top:58px;left:17px}.wish-card:after{width:150px;height:150px;top:88px;left:47px}
-    .card-head,.card-foot{display:flex;justify-content:space-between;align-items:center;color:#705d65;font:8px Georgia,serif;letter-spacing:.14em;position:relative;z-index:2}.line{height:1px;flex:1;margin:0 12px;background:rgba(112,93,101,.35)}.flower{width:66px;height:66px;display:grid;place-items:center;position:absolute;top:49%;left:50%;z-index:2;transform:translate(-50%,-58%);color:var(--wine);border:1px solid rgba(156,64,95,.42);border-radius:46% 54% 45% 55%;animation:morph 5s ease-in-out infinite,flower-spin 15s linear infinite}.flower:before,.flower:after{content:"";position:absolute;inset:9px;border:1px solid rgba(156,64,95,.34);border-radius:55% 45%;transform:rotate(45deg)}.flower:after{inset:17px;transform:rotate(-25deg)}.flower span{animation:reverse-spin 15s linear infinite}
-    .wish{align-self:center;width:84%;margin-top:auto;margin-bottom:28px;color:var(--deep);text-align:center;font:14px/1.8 "STSong","Songti SC",SimSun,serif;letter-spacing:.08em;position:relative;z-index:3;animation:wish .75s ease both}.strip{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(72,40,53,.13);background:rgba(255,250,245,.42)}.strip-title{grid-column:1/-1;min-height:88px}.strip-title,.item{padding:22px 15px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid rgba(72,40,53,.13)}.strip span{color:var(--wine);font:8px Georgia,serif;letter-spacing:.16em}.strip p{margin:18px 0 0;font-family:"STSong","Songti SC",SimSun,serif}.strip-title p{color:var(--muted);font-size:13px;letter-spacing:.14em}.item{min-height:105px}.item p{font-size:17px;letter-spacing:.06em}
-    .petals{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}.petals i{position:absolute;top:-30px;width:11px;height:16px;border-radius:80% 20% 75% 25%;background:rgba(190,94,124,.28);animation:fall 12s linear infinite}.petals i:nth-child(1){left:6%;animation-delay:-7s}.petals i:nth-child(2){left:15%;animation-delay:-2s;animation-duration:15s}.petals i:nth-child(3){left:25%;animation-delay:-10s;animation-duration:17s}.petals i:nth-child(4){left:35%;animation-delay:-4s}.petals i:nth-child(5){left:46%;animation-delay:-9s;animation-duration:16s}.petals i:nth-child(6){left:57%;animation-delay:-1s}.petals i:nth-child(7){left:67%;animation-delay:-6s;animation-duration:18s}.petals i:nth-child(8){left:78%;animation-delay:-12s}.petals i:nth-child(9){left:88%;animation-delay:-5s;animation-duration:16s}.petals i:nth-child(10){left:96%;animation-delay:-8s}
-    .backdrop{position:fixed;inset:0;z-index:30;display:none;place-items:center;padding:14px;background:rgba(57,34,45,.4);backdrop-filter:blur(12px)}.backdrop.show{display:grid;animation:fade .3s ease both}.note{width:min(520px,92vw);min-height:min(520px,calc(100svh - 28px));max-height:calc(100svh - 28px);padding:56px 34px 38px;overflow:auto;position:relative;background:linear-gradient(rgba(255,252,247,.97),rgba(250,240,233,.97));box-shadow:0 40px 100px rgba(52,27,38,.3);transform:rotate(-1deg);animation:note .65s cubic-bezier(.16,1,.3,1) both}.close{position:absolute;top:18px;right:18px;z-index:5;width:42px;height:42px;border:1px solid rgba(73,43,55,.18);border-radius:50%;background:rgba(255,250,245,.8);color:var(--ink);font-size:24px;cursor:pointer}.kicker{color:var(--wine);font:10px Georgia,serif;letter-spacing:.25em}.note h2{margin:24px 0 28px;font:400 clamp(37px,11vw,54px) "STSong","Songti SC",SimSun,serif}.note p{margin:0;color:#665960;font:15px/2 "STSong","Songti SC",SimSun,serif;letter-spacing:.08em}.sign{margin-top:32px;padding-top:18px;display:flex;justify-content:space-between;border-top:1px solid rgba(73,43,55,.18);color:#8a777f;font-size:11px;letter-spacing:.14em}
-    .deep{width:100%;height:54px;margin-top:24px;padding:0 18px;border:1px solid rgba(111,41,69,.24);border-radius:18px;display:flex;align-items:center;justify-content:space-between;background:rgba(156,64,95,.08);color:var(--deep);font-size:13px;letter-spacing:.1em;cursor:pointer;transition:.25s ease}.deep:hover{transform:translateY(-2px);background:rgba(156,64,95,.13)}
-    .intro-note.hide{display:none}.journey{display:none;min-height:390px;flex-direction:column}.journey.active{display:flex;animation:stage-in .55s cubic-bezier(.16,1,.3,1) both}.journey-head{padding-right:54px}.progress-label{display:flex;align-items:center;justify-content:space-between;color:#947b84;font:9px Georgia,serif;letter-spacing:.18em}.progress-line{height:2px;margin-top:12px;overflow:hidden;border-radius:8px;background:rgba(111,41,69,.1)}.progress-line i{display:block;width:33.33%;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--wine),#d49bad);transition:width .55s cubic-bezier(.16,1,.3,1)}
-    .journey h3{margin:38px 0 10px;font:400 clamp(27px,8vw,38px)/1.35 "STSong","Songti SC",SimSun,serif;letter-spacing:.02em}.journey-hint{color:#9a8a90!important;font-size:11px!important;line-height:1.7!important}.choices{display:grid;gap:11px;margin-top:28px}.choice{min-height:58px;padding:0 18px;border:1px solid rgba(111,41,69,.14);border-radius:16px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.43);color:#59424c;text-align:left;cursor:pointer;transition:.25s ease}.choice:hover,.choice:focus-visible{border-color:rgba(156,64,95,.4);background:rgba(156,64,95,.08);transform:translateX(3px);outline:none}.choice span:first-child{font:15px "STSong","Songti SC",SimSun,serif;letter-spacing:.08em}.choice span:last-child{color:var(--wine);font-size:15px}
-    .answer{display:none;margin-top:28px;padding:25px 22px;border:1px solid rgba(156,64,95,.14);border-radius:20px;background:rgba(255,250,246,.72)}.answer.show{display:block;animation:answer-in .55s ease both}.answer-mark{color:var(--wine);font-size:20px}.answer h4{margin:14px 0 12px;color:var(--deep);font:400 23px/1.45 "STSong","Songti SC",SimSun,serif}.answer p{font-size:14px!important;line-height:1.9!important}.continue{width:100%;height:52px;margin-top:17px;border:0;border-radius:16px;background:var(--deep);color:#fff9f4;font-size:12px;letter-spacing:.12em;cursor:pointer}.final-actions{display:flex;gap:10px;margin-top:20px}.final-actions button{flex:1;height:50px;border-radius:15px;cursor:pointer}.restart{border:1px solid rgba(111,41,69,.2);background:transparent;color:var(--deep)}.accept{border:0;background:var(--deep);color:#fff}.final-flower{width:76px;height:76px;margin:20px auto 8px;display:grid;place-items:center;border:1px solid rgba(156,64,95,.3);border-radius:46% 54% 45% 55%;color:var(--wine);animation:morph 4s ease-in-out infinite,spin 14s linear infinite}
-    @keyframes up{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}@keyframes card{from{opacity:0;transform:translateY(40px) rotate(8deg)}to{opacity:1;transform:rotate(2.5deg)}}@keyframes float{0%,100%{transform:translateY(-7px)}50%{transform:translateY(10px) scale(1.02)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes flower-spin{to{transform:translate(-50%,-58%) rotate(360deg)}}@keyframes reverse-spin{to{transform:rotate(-360deg)}}@keyframes morph{50%{border-radius:55% 45% 58% 42%}}@keyframes twinkle{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.2) rotate(15deg)}}@keyframes wish{from{opacity:0;transform:translateY(8px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}@keyframes fall{0%{transform:translate3d(0,-5vh,0) rotate(0);opacity:0}10%{opacity:1}60%{transform:translate3d(45px,65vh,0) rotate(250deg)}100%{transform:translate3d(-25px,115vh,0) rotate(520deg);opacity:0}}@keyframes fade{from{opacity:0}to{opacity:1}}@keyframes note{from{opacity:0;transform:translateY(35px) rotate(2deg) scale(.94)}to{opacity:1;transform:rotate(-1deg)}}@keyframes stage-in{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}@keyframes answer-in{from{opacity:0;transform:translateY(12px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
-    @media(min-width:800px){.topbar{height:88px;padding:0 5vw}.hero{min-height:calc(100vh - 88px);padding:7vh 8vw;grid-template-columns:1fr 1fr;gap:6vw}.copy{text-align:left}.eyebrow{font-size:10px}.hero h1{font-size:clamp(72px,8vw,118px)}.intro{font-size:17px}.actions{align-items:flex-start}.scene{min-height:570px}.sun{width:min(35vw,490px)}.o1{width:min(43vw,610px)}.o2{width:min(38vw,540px)}.wish-card{width:min(350px,70vw);padding:28px}.flower{width:92px;height:92px}.wish{font-size:18px}.strip{grid-template-columns:1.35fr repeat(3,1fr)}.strip-title{grid-column:auto;min-height:170px}.item{min-height:170px}.strip-title,.item{padding:34px 4vw}.item p{font-size:23px}}
-    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+    :root {
+      --ink: #302734;
+      --ink-soft: #5f5360;
+      --muted: #897d86;
+      --paper: #fbf7f1;
+      --paper-soft: rgba(255, 252, 247, 0.74);
+      --rose: #9b526d;
+      --rose-deep: #6f344f;
+      --rose-soft: #d8a5b5;
+      --gold: #b48a57;
+      --line: rgba(74, 49, 62, 0.13);
+      --shadow: rgba(71, 42, 57, 0.17);
+      --accent: #9b526d;
+      --accent-soft: rgba(155, 82, 109, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      scroll-behavior: smooth;
+      background: #f3ebe6;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background: #f3ebe6;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body.dialog-open {
+      overflow: hidden;
+    }
+
+    .dialog-open .ambient *,
+    .dialog-open .postcard-stage * {
+      animation-play-state: paused !important;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      border: 0;
+      font: inherit;
+    }
+
+    button:focus-visible,
+    a:focus-visible {
+      outline: 3px solid rgba(180, 138, 87, 0.42);
+      outline-offset: 4px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .page {
+      min-height: 100vh;
+      min-height: 100svh;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 78% 18%, rgba(255, 240, 222, 0.94) 0 9%, transparent 29%),
+        radial-gradient(circle at 10% 84%, rgba(205, 164, 184, 0.34), transparent 33%),
+        linear-gradient(152deg, #fbf6ef 0%, #f2e5e4 52%, #e3d6df 100%);
+    }
+
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.26;
+      pointer-events: none;
+      background-image:
+        radial-gradient(rgba(70, 43, 57, 0.18) 0.55px, transparent 0.65px),
+        radial-gradient(rgba(255, 255, 255, 0.82) 0.55px, transparent 0.65px);
+      background-position: 0 0, 6px 7px;
+      background-size: 12px 12px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.46), transparent 82%);
+    }
+
+    .ambient {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .ambient-orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(4px);
+      animation: drift 9s ease-in-out infinite;
+    }
+
+    .ambient-orb.one {
+      width: 210px;
+      height: 210px;
+      top: -80px;
+      right: -70px;
+      background: rgba(239, 203, 185, 0.45);
+    }
+
+    .ambient-orb.two {
+      width: 180px;
+      height: 180px;
+      left: -100px;
+      bottom: 9%;
+      background: rgba(186, 146, 174, 0.2);
+      animation-delay: -4s;
+    }
+
+    .petals {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .petals i {
+      --left: 50%;
+      --delay: 0s;
+      --duration: 14s;
+      position: absolute;
+      top: -28px;
+      left: var(--left);
+      width: 8px;
+      height: 13px;
+      border-radius: 80% 22% 72% 28%;
+      background: rgba(153, 83, 109, 0.22);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.32);
+      animation: petal-fall var(--duration) linear var(--delay) infinite;
+    }
+
+    .petals i:nth-child(1) { --left: 5%; --delay: -9s; --duration: 15s; }
+    .petals i:nth-child(2) { --left: 14%; --delay: -2s; --duration: 18s; transform: scale(.7); }
+    .petals i:nth-child(3) { --left: 24%; --delay: -13s; --duration: 17s; }
+    .petals i:nth-child(4) { --left: 36%; --delay: -6s; --duration: 20s; transform: scale(.62); }
+    .petals i:nth-child(5) { --left: 47%; --delay: -16s; --duration: 19s; }
+    .petals i:nth-child(6) { --left: 58%; --delay: -4s; --duration: 16s; transform: scale(.8); }
+    .petals i:nth-child(7) { --left: 67%; --delay: -11s; --duration: 21s; }
+    .petals i:nth-child(8) { --left: 76%; --delay: -7s; --duration: 18s; transform: scale(.66); }
+    .petals i:nth-child(9) { --left: 86%; --delay: -14s; --duration: 17s; }
+    .petals i:nth-child(10) { --left: 95%; --delay: -1s; --duration: 20s; transform: scale(.74); }
+
+    .topbar {
+      min-height: 64px;
+      padding: max(12px, env(safe-area-inset-top)) 20px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--ink);
+      text-decoration: none;
+      font: 10px/1 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.13em;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(48, 39, 52, 0.42);
+      border-radius: 50%;
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    .today {
+      color: var(--muted);
+      font: 9px/1.2 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.16em;
+      text-align: right;
+    }
+
+    .hero {
+      min-height: calc(100svh - 64px);
+      padding: 24px 20px max(26px, env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-rows: auto minmax(278px, 1fr) auto;
+      align-items: center;
+      gap: 18px;
+      position: relative;
+    }
+
+    .hero-copy {
+      z-index: 2;
+      text-align: center;
+      animation: rise-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--rose);
+      font: 700 9px/1.3 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.2em;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: clamp(40px, 12vw, 58px);
+      font-weight: 400;
+      line-height: 1.08;
+      letter-spacing: -0.055em;
+    }
+
+    .hero h1 span,
+    .hero h1 em {
+      display: block;
+    }
+
+    .hero h1 em {
+      color: var(--rose-deep);
+      font-style: italic;
+    }
+
+    .hero-subtitle {
+      margin: 15px auto 0;
+      max-width: 320px;
+      color: var(--ink-soft);
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 13px;
+      line-height: 1.8;
+      letter-spacing: 0.055em;
+    }
+
+    .postcard-stage {
+      min-height: 278px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .halo {
+      position: absolute;
+      width: min(76vw, 310px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: linear-gradient(145deg, rgba(255, 244, 225, 0.92), rgba(219, 163, 184, 0.62));
+      box-shadow:
+        inset -28px -20px 55px rgba(123, 64, 86, 0.1),
+        0 30px 65px rgba(119, 70, 90, 0.14);
+      animation: breathe 6s ease-in-out infinite;
+    }
+
+    .orbit {
+      position: absolute;
+      width: min(91vw, 366px);
+      aspect-ratio: 1;
+      border: 1px solid rgba(107, 61, 79, 0.18);
+      border-radius: 50%;
+      animation: spin 26s linear infinite;
+    }
+
+    .orbit::before,
+    .orbit::after {
+      content: "";
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--rose);
+      box-shadow: 0 0 0 5px rgba(155, 82, 109, 0.09);
+    }
+
+    .orbit::before {
+      top: 14%;
+      right: 16%;
+    }
+
+    .orbit::after {
+      bottom: 9%;
+      left: 25%;
+    }
+
+    .postcard {
+      width: min(68vw, 252px);
+      aspect-ratio: 0.78;
+      padding: 19px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      z-index: 2;
+      overflow: hidden;
+      color: var(--ink);
+      text-align: left;
+      background: rgba(255, 252, 247, 0.76);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+      border-radius: 4px;
+      box-shadow: 0 28px 70px rgba(75, 44, 59, 0.19);
+      backdrop-filter: blur(18px);
+      transform: rotate(2deg);
+      cursor: pointer;
+      animation: postcard-in 0.95s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .postcard:active {
+      transform: rotate(0deg) scale(0.985);
+    }
+
+    .postcard::before,
+    .postcard::after {
+      content: "";
+      position: absolute;
+      border: 1px solid rgba(155, 82, 109, 0.17);
+      border-radius: 50%;
+    }
+
+    .postcard::before {
+      width: 205px;
+      height: 205px;
+      top: 58px;
+      left: 23px;
+    }
+
+    .postcard::after {
+      width: 144px;
+      height: 144px;
+      top: 88px;
+      left: 53px;
+    }
+
+    .postcard-head,
+    .postcard-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+      z-index: 2;
+      color: #74636c;
+      font: 8px/1.3 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.15em;
+    }
+
+    .postcard-foot i {
+      height: 1px;
+      flex: 1;
+      background: rgba(116, 99, 108, 0.3);
+    }
+
+    .weather-seal {
+      width: 66px;
+      height: 66px;
+      display: grid;
+      place-items: center;
+      position: absolute;
+      top: 46%;
+      left: 50%;
+      z-index: 2;
+      color: var(--rose);
+      border: 1px solid rgba(155, 82, 109, 0.4);
+      border-radius: 46% 54% 43% 57%;
+      transform: translate(-50%, -58%);
+      animation: seal-morph 5.5s ease-in-out infinite, seal-spin 18s linear infinite;
+    }
+
+    .weather-seal::before,
+    .weather-seal::after {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border: 1px solid rgba(155, 82, 109, 0.28);
+      border-radius: 56% 44%;
+      transform: rotate(44deg);
+    }
+
+    .weather-seal::after {
+      inset: 18px;
+      transform: rotate(-24deg);
+    }
+
+    .weather-seal span {
+      font-size: 15px;
+      animation: reverse-spin 18s linear infinite;
+    }
+
+    .rotating-wish {
+      width: 90%;
+      margin: auto auto 30px;
+      align-self: center;
+      position: relative;
+      z-index: 3;
+      color: var(--rose-deep);
+      text-align: center;
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 14px;
+      line-height: 1.75;
+      letter-spacing: 0.07em;
+    }
+
+    .rotating-wish.change {
+      animation: wish-change 0.65s ease both;
+    }
+
+    .hero-actions {
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .start-button {
+      width: min(100%, 340px);
+      min-height: 56px;
+      padding: 7px 7px 7px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-radius: 999px;
+      color: #fffaf6;
+      background: linear-gradient(110deg, var(--rose-deep), #8b4561);
+      box-shadow: 0 16px 38px rgba(111, 52, 79, 0.22);
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .start-button:active {
+      transform: scale(0.985);
+    }
+
+    .start-button span:first-child {
+      font-size: 13px;
+      letter-spacing: 0.12em;
+    }
+
+    .start-button span:last-child {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      color: var(--rose-deep);
+      background: #fffaf6;
+      font-size: 17px;
+    }
+
+    .duration-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+    }
+
+    .experience {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 78% 18%, var(--accent-soft), transparent 34%),
+        rgba(47, 34, 43, 0.48);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      animation: fade-in 0.35s ease both;
+      transition: background 0.55s ease;
+    }
+
+    .experience-glow {
+      position: absolute;
+      width: 70vw;
+      max-width: 520px;
+      aspect-ratio: 1;
+      top: -24%;
+      right: -24%;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      filter: blur(6px);
+      pointer-events: none;
+      transition: background 0.55s ease;
+    }
+
+    .journey-shell {
+      width: min(100%, 560px);
+      max-height: 100%;
+      min-height: min(680px, calc(100svh - 24px));
+      position: relative;
+      z-index: 2;
+      overflow: auto;
+      overscroll-behavior: contain;
+      color: var(--ink);
+      background:
+        linear-gradient(150deg, rgba(255, 253, 249, 0.98), rgba(248, 238, 234, 0.97)),
+        var(--paper);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 28px;
+      box-shadow: 0 36px 110px rgba(46, 28, 38, 0.34);
+      animation: shell-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+      scrollbar-width: none;
+    }
+
+    .journey-shell::-webkit-scrollbar {
+      display: none;
+    }
+
+    .journey-topbar {
+      min-height: 68px;
+      padding: 14px 16px 8px;
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      background: linear-gradient(to bottom, rgba(255, 252, 248, 0.97) 70%, transparent);
+    }
+
+    .icon-button {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(74, 49, 62, 0.13);
+      border-radius: 50%;
+      color: var(--ink-soft);
+      background: rgba(255, 255, 255, 0.44);
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .icon-button:active {
+      transform: scale(0.94);
+    }
+
+    .progress {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .progress-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      color: var(--muted);
+      font: 8px/1.2 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.15em;
+    }
+
+    .progress-dots {
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .progress-dots i {
+      width: 22px;
+      height: 3px;
+      display: block;
+      border-radius: 99px;
+      background: rgba(74, 49, 62, 0.12);
+      transition: background 0.35s ease, transform 0.35s ease;
+    }
+
+    .progress-dots i.active {
+      background: var(--accent);
+      transform: scaleX(1.08);
+    }
+
+    .journey-content {
+      min-height: 580px;
+      padding: 28px 26px 34px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .panel {
+      width: 100%;
+      margin: auto 0;
+      animation: panel-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .panel-kicker {
+      margin: 0 0 18px;
+      color: var(--accent);
+      font: 700 9px/1.4 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.22em;
+      transition: color 0.35s ease;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: clamp(34px, 10vw, 48px);
+      font-weight: 400;
+      line-height: 1.25;
+      letter-spacing: -0.025em;
+    }
+
+    .panel-lead {
+      margin: 24px 0 0;
+      color: var(--ink-soft);
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 15px;
+      line-height: 2;
+      letter-spacing: 0.055em;
+    }
+
+    .panel-hint {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.7;
+      letter-spacing: 0.04em;
+    }
+
+    .panel-action {
+      width: 100%;
+      min-height: 54px;
+      margin-top: 32px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 17px;
+      color: #fffaf6;
+      background: var(--accent);
+      box-shadow: 0 13px 32px rgba(92, 51, 69, 0.17);
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: background 0.35s ease, transform 0.2s ease;
+    }
+
+    .panel-action:active {
+      transform: scale(0.985);
+    }
+
+    .tiny-note {
+      margin: 13px 0 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+    }
+
+    .choices {
+      margin-top: 26px;
+      display: grid;
+      gap: 11px;
+    }
+
+    .choice {
+      width: 100%;
+      min-height: 72px;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: 34px 1fr 28px;
+      align-items: center;
+      gap: 11px;
+      color: var(--ink);
+      text-align: left;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(74, 49, 62, 0.12);
+      border-radius: 18px;
+      cursor: pointer;
+      transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+    }
+
+    .choice:active {
+      transform: scale(0.985);
+    }
+
+    .choice:hover,
+    .choice:focus-visible {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .choice-symbol {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 16px;
+      transition: color 0.35s ease, background 0.35s ease;
+    }
+
+    .choice-copy {
+      min-width: 0;
+    }
+
+    .choice-copy strong,
+    .choice-copy small {
+      display: block;
+    }
+
+    .choice-copy strong {
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
+
+    .choice-copy small {
+      margin-top: 5px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .choice-arrow {
+      color: var(--muted);
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .reflection-mark {
+      width: 76px;
+      height: 76px;
+      margin-bottom: 30px;
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid color-mix(in srgb, var(--accent) 36%, transparent);
+      border-radius: 46% 54% 43% 57%;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 26px;
+      animation: seal-morph 4.5s ease-in-out infinite;
+    }
+
+    .reflection-text {
+      margin: 22px 0 0;
+      padding: 22px 20px;
+      color: var(--ink-soft);
+      background: rgba(255, 255, 255, 0.44);
+      border: 1px solid rgba(74, 49, 62, 0.1);
+      border-radius: 19px;
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 14px;
+      line-height: 1.9;
+      letter-spacing: 0.045em;
+    }
+
+    .result-panel {
+      margin: auto 0;
+    }
+
+    .result-card {
+      padding: 28px 23px 24px;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.54);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 5px;
+      box-shadow: 0 25px 58px rgba(73, 45, 59, 0.14);
+    }
+
+    .result-card::before {
+      content: "";
+      position: absolute;
+      width: 210px;
+      height: 210px;
+      top: -105px;
+      right: -100px;
+      border: 1px solid var(--accent-soft);
+      border-radius: 50%;
+      box-shadow: 0 0 0 34px rgba(255, 255, 255, 0.16);
+    }
+
+    .result-kicker {
+      position: relative;
+      color: var(--accent);
+      font: 700 9px/1.4 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.2em;
+    }
+
+    .result-card h2 {
+      margin: 17px 0 22px;
+      position: relative;
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 34px;
+      font-weight: 400;
+      line-height: 1.25;
+    }
+
+    .result-copy {
+      position: relative;
+      color: var(--ink-soft);
+      font-family: "Songti SC", STSong, SimSun, serif;
+      font-size: 14px;
+      line-height: 2;
+      letter-spacing: 0.045em;
+    }
+
+    .result-copy p {
+      margin: 0 0 14px;
+    }
+
+    .result-copy p:last-child {
+      margin-bottom: 0;
+    }
+
+    .tokens {
+      margin-top: 22px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      position: relative;
+    }
+
+    .token {
+      min-height: 30px;
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(74, 49, 62, 0.11);
+      border-radius: 999px;
+      color: var(--ink-soft);
+      background: rgba(255, 252, 248, 0.68);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+
+    .token i {
+      color: var(--accent);
+      font-style: normal;
+    }
+
+    .result-actions {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 9px;
+    }
+
+    .secondary-button,
+    .primary-button {
+      min-height: 52px;
+      padding: 0 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.35s ease;
+    }
+
+    .secondary-button {
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+
+    .primary-button {
+      color: #fffaf6;
+      background: var(--accent);
+    }
+
+    .secondary-button:active,
+    .primary-button:active {
+      transform: scale(0.98);
+    }
+
+    .copy-row {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .copy-button {
+      min-height: 42px;
+      padding: 0 16px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    .accepted {
+      text-align: center;
+    }
+
+    .accepted-seal {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 26px;
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      border-radius: 50%;
+      font: 20px/1 Georgia, "Times New Roman", serif;
+      animation: accepted-pop 0.7s cubic-bezier(0.16, 1, 0.3, 1) both, breathe 5s 0.7s ease-in-out infinite;
+    }
+
+    .accepted h2 {
+      font-size: clamp(36px, 10vw, 48px);
+    }
+
+    .accepted .panel-lead {
+      max-width: 370px;
+    }
+
+    .sparkles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .sparkles i {
+      --angle: 0deg;
+      --distance: 120px;
+      position: absolute;
+      top: 46%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0;
+      animation: sparkle-out 1.2s ease-out both;
+    }
+
+    .sparkles i:nth-child(1) { --angle: 10deg; --distance: 142px; }
+    .sparkles i:nth-child(2) { --angle: 42deg; --distance: 116px; animation-delay: .06s; }
+    .sparkles i:nth-child(3) { --angle: 78deg; --distance: 136px; animation-delay: .02s; }
+    .sparkles i:nth-child(4) { --angle: 112deg; --distance: 118px; animation-delay: .1s; }
+    .sparkles i:nth-child(5) { --angle: 151deg; --distance: 148px; animation-delay: .03s; }
+    .sparkles i:nth-child(6) { --angle: 194deg; --distance: 126px; animation-delay: .08s; }
+    .sparkles i:nth-child(7) { --angle: 229deg; --distance: 143px; animation-delay: .01s; }
+    .sparkles i:nth-child(8) { --angle: 271deg; --distance: 121px; animation-delay: .09s; }
+    .sparkles i:nth-child(9) { --angle: 309deg; --distance: 139px; animation-delay: .04s; }
+    .sparkles i:nth-child(10) { --angle: 344deg; --distance: 116px; animation-delay: .11s; }
+
+    .sr-only {
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      position: absolute;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(26px, env(safe-area-inset-bottom));
+      z-index: 80;
+      min-width: 154px;
+      padding: 12px 18px;
+      color: #fffaf6;
+      background: rgba(54, 40, 49, 0.9);
+      border-radius: 999px;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      box-shadow: 0 15px 40px rgba(35, 23, 30, 0.22);
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes postcard-in {
+      from { opacity: 0; transform: translateY(34px) rotate(7deg) scale(0.94); }
+      to { opacity: 1; transform: rotate(2deg) scale(1); }
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: translateY(-3px) scale(1); }
+      50% { transform: translateY(5px) scale(1.025); }
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(10px, 14px, 0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes seal-spin {
+      to { transform: translate(-50%, -58%) rotate(360deg); }
+    }
+
+    @keyframes reverse-spin {
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes seal-morph {
+      50% { border-radius: 57% 43% 54% 46%; }
+    }
+
+    @keyframes petal-fall {
+      0% { opacity: 0; transform: translate3d(0, -5vh, 0) rotate(0deg); }
+      12% { opacity: 0.8; }
+      58% { transform: translate3d(38px, 62vh, 0) rotate(245deg); }
+      100% { opacity: 0; transform: translate3d(-24px, 112vh, 0) rotate(520deg); }
+    }
+
+    @keyframes wish-change {
+      from { opacity: 0; transform: translateY(7px); filter: blur(3px); }
+      to { opacity: 1; transform: translateY(0); filter: none; }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes shell-in {
+      from { opacity: 0; transform: translateY(26px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes panel-in {
+      from { opacity: 0; transform: translateX(16px); filter: blur(3px); }
+      to { opacity: 1; transform: translateX(0); filter: none; }
+    }
+
+    @keyframes accepted-pop {
+      from { opacity: 0; transform: scale(0.45) rotate(-18deg); }
+      to { opacity: 1; transform: scale(1) rotate(0); }
+    }
+
+    @keyframes sparkle-out {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+      18% { opacity: 0.85; }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--distance)) scale(0);
+      }
+    }
+
+    @media (max-height: 720px) and (max-width: 799px) {
+      .hero {
+        padding-top: 12px;
+        gap: 9px;
+      }
+
+      .hero h1 {
+        font-size: clamp(36px, 10.5vw, 46px);
+      }
+
+      .hero-subtitle {
+        margin-top: 9px;
+        line-height: 1.55;
+      }
+
+      .postcard-stage {
+        min-height: 240px;
+      }
+
+      .postcard {
+        width: min(56vw, 210px);
+      }
+
+      .halo {
+        width: min(65vw, 258px);
+      }
+
+      .orbit {
+        width: min(77vw, 305px);
+      }
+    }
+
+    @media (min-width: 800px) {
+      .topbar {
+        min-height: 82px;
+        padding: 18px 5vw;
+      }
+
+      .hero {
+        min-height: calc(100svh - 82px);
+        padding: 6vh 8vw 8vh;
+        grid-template-columns: minmax(340px, 0.9fr) minmax(410px, 1.1fr);
+        grid-template-rows: 1fr auto;
+        column-gap: 7vw;
+      }
+
+      .hero-copy {
+        text-align: left;
+      }
+
+      .hero h1 {
+        font-size: clamp(64px, 7vw, 106px);
+      }
+
+      .hero-subtitle {
+        margin-left: 0;
+        font-size: 16px;
+      }
+
+      .postcard-stage {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        min-height: 590px;
+      }
+
+      .postcard {
+        width: min(340px, 68vw);
+        padding: 28px;
+      }
+
+      .rotating-wish {
+        font-size: 18px;
+        margin-bottom: 46px;
+      }
+
+      .weather-seal {
+        width: 92px;
+        height: 92px;
+      }
+
+      .halo {
+        width: min(34vw, 470px);
+      }
+
+      .orbit {
+        width: min(42vw, 590px);
+      }
+
+      .hero-actions {
+        grid-column: 1;
+        align-items: flex-start;
+      }
+
+      .start-button {
+        width: 330px;
+      }
+
+      .journey-shell {
+        min-height: min(720px, calc(100svh - 40px));
+      }
+
+      .journey-content {
+        min-height: 620px;
+        padding: 42px 54px 48px;
+      }
+
+      .choice {
+        min-height: 78px;
+      }
+
+      .choice-copy strong {
+        font-size: 17px;
+      }
+
+      .postcard:hover {
+        transform: rotate(0.5deg) translateY(-5px);
+        box-shadow: 0 34px 82px rgba(75, 44, 59, 0.23);
+      }
+
+      .start-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 44px rgba(111, 52, 79, 0.28);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
   <main class="page" id="home">
-    <div class="petals" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <header class="topbar"><a class="brand" href="#home"><span class="mark">S</span><span>SUNDAY LETTER</span></a></header>
-    <section class="hero">
-      <div class="copy">
-        <p class="eyebrow">TO AN OLD FRIEND · 给一位老朋友</p>
-        <h1>嗨，<br><span>好久不见。</span></h1>
-        <p class="intro">没有什么特别的事情，<br>只是借这个小页面，送上一句普通的问候。</p>
-        <div class="actions"><button class="open" id="openWish"><span>看看今日份祝福</span><span class="arrow">↗</span></button><small>无需回复，看到就好</small></div>
+    <div class="ambient" aria-hidden="true">
+      <span class="ambient-orb one"></span>
+      <span class="ambient-orb two"></span>
+      <div class="petals">
+        <i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i>
       </div>
-      <div class="scene" aria-label="动态祝福卡片">
-        <div class="orbit o1"></div><div class="orbit o2"></div><span class="star s1">✦</span><span class="star s2">✧</span><div class="sun"></div>
-        <article class="wish-card"><div class="card-head"><span>NO. 01</span><span id="today"></span></div><div class="flower"><span>✦</span></div><div class="wish" id="wish">愿你忙有所获，闲有所趣。</div><div class="card-foot"><span>GOOD DAY</span><span class="line"></span><span>2026</span></div></article>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="回到页面顶部">
+        <span class="brand-mark">H</span>
+        <span>HELLO NOTE</span>
+      </a>
+      <time class="today" id="today" aria-label="今天的日期"></time>
+    </header>
+
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <p class="eyebrow">A LITTLE HELLO · FOR TODAY</p>
+        <h1 id="heroTitle">
+          <span>给今天留一小格</span>
+          <em>好天气</em>
+        </h1>
+        <p class="hero-subtitle">
+          三次轻轻的选择，换一张适合此刻的祝福。<br>
+          没有任务，也不用回复。
+        </p>
+      </div>
+
+      <div class="postcard-stage" aria-label="会变换文字的今日问候卡片">
+        <div class="halo" aria-hidden="true"></div>
+        <div class="orbit" aria-hidden="true"></div>
+        <button class="postcard" id="postcard" type="button" aria-label="换一句祝福">
+          <span class="postcard-head">
+            <span>DAY NOTE · 08</span>
+            <span id="cardDate">TODAY</span>
+          </span>
+          <span class="weather-seal" aria-hidden="true"><span>✦</span></span>
+          <span class="rotating-wish" id="rotatingWish">愿忙时有条理，闲时有欢喜。</span>
+          <span class="postcard-foot">
+            <span>GOOD DAY</span>
+            <i></i>
+            <span id="cardYear">2026</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="hero-actions">
+        <button class="start-button" id="openExperience" type="button" aria-haspopup="dialog" aria-controls="experience" aria-expanded="false">
+          <span>从这里开始</span>
+          <span aria-hidden="true">→</span>
+        </button>
+        <p class="duration-note">大约需要 20 秒 · 凭第一感觉就好</p>
       </div>
     </section>
-    <section class="strip"><div class="strip-title"><span>01—03</span><p>三个小小祝愿</p></div><div class="item"><span>01</span><p>工作顺利</p></div><div class="item"><span>02</span><p>生活有趣</p></div><div class="item"><span>03</span><p>天天开心</p></div></section>
   </main>
-  <div class="backdrop" id="modal">
-    <article class="note" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
-      <button class="close" id="closeWish" aria-label="关闭">×</button>
-      <div class="intro-note" id="introNote">
-        <span class="kicker">TODAY'S WISH</span>
-        <h2 id="noteTitle">愿你一切都好。</h2>
-        <p>愿最近的日子顺顺利利，忙碌有收获，休息也自在。天气好的时候多出去走走，在自己的节奏里，过好每一天。</p>
-        <div class="sign"><span>一句普通的祝福</span><span>☼</span></div>
-        <button class="deep" id="goDeeper"><span>如果愿意，再往里看看</span><span>→</span></button>
-      </div>
-      <div class="journey" id="journey" aria-live="polite">
-        <div class="journey-head">
-          <div class="progress-label"><span>A LITTLE JOURNEY</span><span id="progressText">01 / 03</span></div>
-          <div class="progress-line"><i id="progressBar"></i></div>
+
+  <section class="experience" id="experience" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" hidden>
+    <div class="experience-glow" aria-hidden="true"></div>
+    <article class="journey-shell">
+      <header class="journey-topbar">
+        <button class="icon-button" id="backButton" type="button" aria-label="返回上一步" hidden>←</button>
+        <div class="progress" aria-label="互动进度">
+          <span class="progress-label"><span>A LITTLE JOURNEY</span><span id="stepLabel">00 / 03</span></span>
+          <span class="progress-dots" aria-hidden="true">
+            <i id="dotOne"></i><i id="dotTwo"></i><i id="dotThree"></i>
+          </span>
         </div>
-        <div id="journeyBody"></div>
+        <button class="icon-button" id="closeButton" type="button" aria-label="关闭互动页面">×</button>
+      </header>
+      <div class="journey-content">
+        <div id="journeyContent" aria-live="polite"></div>
       </div>
     </article>
-  </div>
+  </section>
+
+  <p class="sr-only" id="liveStatus" aria-live="polite"></p>
+  <div class="toast" id="toast" role="status">已复制到剪贴板</div>
+
   <script>
-    const wishes=["愿你忙有所获，闲有所趣。","愿生活常有小惊喜，也常有好天气。","愿你按照自己的节奏，轻松地向前走。"];let i=0;const wish=document.getElementById('wish');setInterval(()=>{i=(i+1)%wishes.length;wish.style.animation='none';wish.offsetHeight;wish.textContent=wishes[i];wish.style.animation='wish .75s ease both'},4200);
-    document.getElementById('today').textContent=new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
-    const modal=document.getElementById('modal'),introNote=document.getElementById('introNote'),journey=document.getElementById('journey'),journeyBody=document.getElementById('journeyBody'),progressText=document.getElementById('progressText'),progressBar=document.getElementById('progressBar');
-    const stages=[
-      {q:'最近的你，更像哪一种天气？',hint:'没有标准答案，选一个此刻最接近的。',options:[
-        {label:'晴天',mark:'☀',title:'晴朗，自有它的光',text:'愿那些明亮的时刻，不必盛大，也能在普通的一天里悄悄发生。愿你的笑意，来自真实而轻松的生活。'},
-        {label:'微风',mark:'≈',title:'风会带走一点疲惫',text:'愿你偶尔放慢脚步，让风经过肩头，也让忙碌暂时退到身后。松弛不是停下，而是更从容地向前。'},
-        {label:'小雨',mark:'◌',title:'雨天也不必急着放晴',text:'如果最近有一点疲惫，也没关系。愿你给自己安静的余地，等云慢慢散开，等心情重新变得轻盈。'}]},
-      {q:'此刻，更想为自己留住什么？',hint:'选择一种想带进明天的力量。',options:[
-        {label:'一点松弛',mark:'∿',title:'把日子过得舒展一些',text:'愿你不被匆忙催促，不为暂时的迟缓责怪自己。生活很长，按照舒服的节奏走，也会抵达想去的地方。'},
-        {label:'一点勇气',mark:'✦',title:'勇气从来不必声势浩大',text:'愿你在需要做决定的时候，相信自己的判断。哪怕只向前一小步，也是在认真地靠近更好的生活。'},
-        {label:'一点好运',mark:'✧',title:'愿小小的好运正在路上',text:'愿好消息来得恰到好处，愿偶然遇见的风景让你开心，也愿认真生活的你，被世界温柔回应。'}]},
-      {q:'最后，想带走哪一句话？',hint:'这一句，只属于今天。',options:[
-        {label:'慢慢来',mark:'…',title:'不必赶路，也能抵达',text:'愿你不必追赶任何人的时钟。花有花期，人有自己的节奏；把今天过好，答案会在合适的时候出现。',final:'愿往后的日子不慌不忙，有时间看晚霞，也有心情等花开。慢慢走，沿途自会有属于你的风景。'},
-        {label:'相信自己',mark:'○',title:'你比想象中更有力量',text:'愿你少一点自我怀疑，多一点笃定从容。曾经走过的路，都在悄悄为今天的你积攒答案。',final:'愿你始终相信自己的选择，也始终保留重新出发的勇气。脚下有路，眼里有光，心中自有方向。'},
-        {label:'好好休息',mark:'☾',title:'今晚，把疲惫轻轻放下',text:'愿你允许自己暂时不做什么。关掉纷扰，留一点安静给自己；好好睡一觉，明天仍是新的开始。',final:'愿每一个疲惫的夜晚，都有安稳的睡眠接住你。醒来有清风、有朝阳，也有重新出发的轻盈。'}]}
-    ];
-    let stageIndex=0,selected=[];
-    function openModal(){modal.classList.add('show');introNote.classList.remove('hide');journey.classList.remove('active')}
-    function closeModal(){modal.classList.remove('show');stageIndex=0;selected=[]}
-    function startJourney(){introNote.classList.add('hide');journey.classList.add('active');stageIndex=0;selected=[];renderStage()}
-    function renderStage(){const s=stages[stageIndex];progressText.textContent=`0${stageIndex+1} / 03`;progressBar.style.width=`${(stageIndex+1)*33.333}%`;journeyBody.innerHTML=`<h3>${s.q}</h3><p class="journey-hint">${s.hint}</p><div class="choices">${s.options.map((o,n)=>`<button class="choice" data-choice="${n}"><span>${o.label}</span><span>${o.mark}</span></button>`).join('')}</div><div class="answer" id="answer"></div>`;journeyBody.querySelectorAll('.choice').forEach(btn=>btn.onclick=()=>choose(Number(btn.dataset.choice)))}
-    function choose(optionIndex){const o=stages[stageIndex].options[optionIndex];selected[stageIndex]=o;journeyBody.querySelector('.choices').style.display='none';const answer=document.getElementById('answer');answer.innerHTML=`<span class="answer-mark">${o.mark}</span><h4>${o.title}</h4><p>${o.text}</p><button class="continue">${stageIndex<stages.length-1?'继续深入':'看看最后的话'}</button>`;answer.classList.add('show');answer.querySelector('.continue').onclick=()=>{if(stageIndex<stages.length-1){stageIndex++;renderStage()}else{renderFinal()}}}
-    function renderFinal(){const ending=selected[2];progressText.textContent='03 / 03';progressBar.style.width='100%';journeyBody.innerHTML=`<div class="final-flower">✦</div><h3 style="text-align:center">这段话，留给今天的你</h3><div class="answer show"><h4>${ending.title}</h4><p>${ending.final}</p></div><div class="final-actions"><button class="restart" id="restart">重新看看</button><button class="accept" id="accept">收好祝福</button></div>`;document.getElementById('restart').onclick=startJourney;document.getElementById('accept').onclick=closeModal}
-    document.getElementById('openWish').onclick=openModal;document.getElementById('closeWish').onclick=closeModal;document.getElementById('goDeeper').onclick=startJourney;modal.onclick=e=>{if(e.target===modal)closeModal()};addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+    (() => {
+      const wishes = [
+        "愿忙时有条理，闲时有欢喜。",
+        "愿普通的一天，也有一点小惊喜。",
+        "愿你按自己的节奏，轻松向前走。",
+        "愿好消息在合适的时候来到。"
+      ];
+
+      const stages = [
+        {
+          kicker: "01 · 此刻",
+          question: "最近的你，更像哪一种天气？",
+          hint: "没有标准答案，选一个此刻最接近的。",
+          options: [
+            {
+              label: "晴时有风",
+              note: "状态轻快",
+              symbol: "☀",
+              accent: "#a76a55",
+              soft: "rgba(190, 132, 103, 0.16)",
+              response: "状态不错就多留一会儿。普通的开心，也值得认真收藏。",
+              final: "把这份轻快留久一点"
+            },
+            {
+              label: "云多一点",
+              note: "暂时看不远",
+              symbol: "≈",
+              accent: "#747a93",
+              soft: "rgba(116, 122, 147, 0.15)",
+              response: "看不清远处时，不必急着判断天气，先照顾好眼前。",
+              final: "给尚未明朗的事一点时间"
+            },
+            {
+              label: "刚下过雨",
+              note: "需要缓一缓",
+              symbol: "◌",
+              accent: "#567888",
+              soft: "rgba(86, 120, 136, 0.15)",
+              response: "辛苦不必藏起来。雨会停，路也会慢慢变干。",
+              final: "别催自己立刻放晴"
+            }
+          ]
+        },
+        {
+          kicker: "02 · 带走",
+          question: "如果能从这里带走一样东西，你想选——",
+          hint: "挑一份此刻最需要的小小补给。",
+          options: [
+            {
+              label: "一小段松弛",
+              note: "把肩膀放松一点",
+              symbol: "∿",
+              accent: "#8f6f83",
+              soft: "rgba(143, 111, 131, 0.15)",
+              response: "把肩膀放松一点。今天不需要每件事都完成得漂亮。",
+              sign: "留白",
+              title: "给日子留一点空白",
+              intro: "你选了一小段松弛。",
+              closing: "愿往后的日子留一点空白：能发呆，能散步，也能在普通的一天里捡到轻快。"
+            },
+            {
+              label: "一点稳稳的底气",
+              note: "只需再走一步",
+              symbol: "✦",
+              accent: "#9b526d",
+              soft: "rgba(155, 82, 109, 0.15)",
+              response: "底气不是确定会赢，而是知道自己还能再走一步。",
+              sign: "向前",
+              title: "小小向前，也有回音",
+              intro: "你带走了一点稳稳的底气。",
+              closing: "愿每一次小小的推进都有回音。不必声势浩大，只要方向是自己选的。"
+            },
+            {
+              label: "一份恰好的好运",
+              note: "让好事碰巧发生",
+              symbol: "✧",
+              accent: "#a77d42",
+              soft: "rgba(167, 125, 66, 0.16)",
+              response: "愿小概率的好事，刚好发生在你经过的时候。",
+              sign: "恰好",
+              title: "好事正在路上",
+              intro: "把一份恰到好处的好运装进口袋。",
+              closing: "愿近期遇见几件不起眼却让人开心的事：一道会做的题、一条好消息，或一顿喜欢的饭。"
+            }
+          ]
+        },
+        {
+          kicker: "03 · 节奏",
+          question: "接下来的日子，想按哪种节奏走？",
+          hint: "最后一次选择，听听第一反应。",
+          options: [
+            {
+              label: "不赶时间",
+              note: "把脚步还给自己",
+              symbol: "…",
+              accent: "#8e6575",
+              soft: "rgba(142, 101, 117, 0.15)",
+              response: "慢一点不是耽误，是把脚步还给自己。",
+              final: "不赶时间，慢慢走"
+            },
+            {
+              label: "只管下一步",
+              note: "先把眼前走稳",
+              symbol: "→",
+              accent: "#7b627d",
+              soft: "rgba(123, 98, 125, 0.15)",
+              response: "不用一次解决所有事情，先把最近的一步走稳。",
+              final: "不想太远，只走好下一步"
+            },
+            {
+              label: "该休息就休息",
+              note: "休息也是正事",
+              symbol: "☾",
+              accent: "#596f8c",
+              soft: "rgba(89, 111, 140, 0.15)",
+              response: "电量不足时，休息本身就是正事。",
+              final: "先把电量充满，再出发"
+            }
+          ]
+        }
+      ];
+
+      const experience = document.getElementById("experience");
+      const journeyContent = document.getElementById("journeyContent");
+      const openButton = document.getElementById("openExperience");
+      const postcard = document.getElementById("postcard");
+      const closeButton = document.getElementById("closeButton");
+      const backButton = document.getElementById("backButton");
+      const stepLabel = document.getElementById("stepLabel");
+      const dots = ["dotOne", "dotTwo", "dotThree"].map((id) => document.getElementById(id));
+      const rotatingWish = document.getElementById("rotatingWish");
+      const liveStatus = document.getElementById("liveStatus");
+      const toast = document.getElementById("toast");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      let wishIndex = 0;
+      let wishTimer = null;
+      let stageIndex = -1;
+      let viewMode = "intro";
+      let selections = [];
+      let lastFocused = null;
+      let toastTimer = null;
+
+      const now = new Date();
+      document.getElementById("today").textContent = new Intl.DateTimeFormat("zh-CN", {
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "short"
+      }).format(now).replaceAll("/", " · ");
+      document.getElementById("cardDate").textContent = new Intl.DateTimeFormat("en", {
+        month: "short",
+        day: "2-digit"
+      }).format(now).toUpperCase();
+      document.getElementById("cardYear").textContent = String(now.getFullYear());
+
+      function setWish(nextIndex) {
+        wishIndex = (nextIndex + wishes.length) % wishes.length;
+        rotatingWish.classList.remove("change");
+        void rotatingWish.offsetWidth;
+        rotatingWish.textContent = wishes[wishIndex];
+        rotatingWish.classList.add("change");
+      }
+
+      function startWishTimer() {
+        if (reduceMotion || wishTimer !== null) return;
+        wishTimer = window.setInterval(() => setWish(wishIndex + 1), 4300);
+      }
+
+      function stopWishTimer() {
+        if (wishTimer === null) return;
+        window.clearInterval(wishTimer);
+        wishTimer = null;
+      }
+
+      function updateProgress(step) {
+        const visibleStep = Math.max(0, Math.min(3, step));
+        stepLabel.textContent = visibleStep === 0 ? "00 / 03" : `${String(visibleStep).padStart(2, "0")} / 03`;
+        dots.forEach((dot, index) => dot.classList.toggle("active", index < visibleStep));
+      }
+
+      function setAccent(option) {
+        const accent = option?.accent || "#9b526d";
+        const soft = option?.soft || "rgba(155, 82, 109, 0.14)";
+        experience.style.setProperty("--accent", accent);
+        experience.style.setProperty("--accent-soft", soft);
+      }
+
+      function renderIntro() {
+        stageIndex = -1;
+        viewMode = "intro";
+        updateProgress(0);
+        setAccent(null);
+        backButton.hidden = true;
+        journeyContent.innerHTML = `
+          <div class="panel">
+            <p class="panel-kicker">A SMALL NOTE · 你好</p>
+            <h2 id="dialogTitle">嗨，好久不见。</h2>
+            <p class="panel-lead">
+              希望最近的生活大体顺利，<br>
+              也偶尔有一点小惊喜。<br><br>
+              如果刚好有点忙、有点累，也没关系。<br>
+              凭第一感觉选三次，把适合今天的话带走吧。
+            </p>
+            <button class="panel-action" type="button" data-action="begin">
+              <span>好，往里看看</span><span aria-hidden="true">→</span>
+            </button>
+            <p class="tiny-note">没有正确答案 · 也不会记录任何选择</p>
+          </div>`;
+        journeyContent.querySelector("[data-action='begin']").addEventListener("click", () => {
+          stageIndex = 0;
+          renderQuestion();
+        });
+      }
+
+      function renderQuestion() {
+        viewMode = "question";
+        const stage = stages[stageIndex];
+        updateProgress(stageIndex + 1);
+        setAccent(selections[stageIndex] || selections[stageIndex - 1] || null);
+        backButton.hidden = false;
+        journeyContent.innerHTML = `
+          <div class="panel">
+            <p class="panel-kicker">${stage.kicker}</p>
+            <h2 id="dialogTitle">${stage.question}</h2>
+            <p class="panel-hint">${stage.hint}</p>
+            <div class="choices">
+              ${stage.options.map((option, index) => `
+                <button class="choice" type="button" data-choice="${index}">
+                  <span class="choice-symbol" aria-hidden="true">${option.symbol}</span>
+                  <span class="choice-copy">
+                    <strong>${option.label}</strong>
+                    <small>${option.note}</small>
+                  </span>
+                  <span class="choice-arrow" aria-hidden="true">→</span>
+                </button>`).join("")}
+            </div>
+          </div>`;
+        journeyContent.querySelectorAll("[data-choice]").forEach((button) => {
+          button.addEventListener("click", () => selectOption(Number(button.dataset.choice)));
+        });
+        focusSoon(journeyContent.querySelector("[data-choice]"));
+      }
+
+      function selectOption(optionIndex) {
+        selections[stageIndex] = stages[stageIndex].options[optionIndex];
+        selections = selections.slice(0, stageIndex + 1);
+        renderReflection();
+      }
+
+      function renderReflection() {
+        viewMode = "reflection";
+        const option = selections[stageIndex];
+        setAccent(option);
+        updateProgress(stageIndex + 1);
+        backButton.hidden = false;
+        journeyContent.innerHTML = `
+          <div class="panel">
+            <div class="reflection-mark" aria-hidden="true">${option.symbol}</div>
+            <p class="panel-kicker">已选择 · ${option.label}</p>
+            <h2 id="dialogTitle">${option.label}</h2>
+            <p class="reflection-text">${option.response}</p>
+            <button class="panel-action" type="button" data-action="continue">
+              <span>${stageIndex < stages.length - 1 ? "继续往里走" : "看看你的今日小签"}</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>`;
+        const continueButton = journeyContent.querySelector("[data-action='continue']");
+        continueButton.addEventListener("click", () => {
+          if (stageIndex < stages.length - 1) {
+            stageIndex += 1;
+            renderQuestion();
+          } else {
+            renderResult();
+          }
+        });
+        focusSoon(continueButton);
+      }
+
+      function buildResult() {
+        const weather = selections[0];
+        const gift = selections[1];
+        const rhythm = selections[2];
+        return {
+          title: gift.title,
+          sign: gift.sign,
+          html: `
+            <p>${weather.final}。</p>
+            <p>${gift.intro}<br>接下来，就${rhythm.final}。</p>
+            <p>${gift.closing}</p>`,
+          text: `你的今日小签｜${gift.sign}\n\n${weather.final}。\n\n${gift.intro} 接下来，就${rhythm.final}。\n\n${gift.closing}\n\n愿一切平常，也一切顺利。`
+        };
+      }
+
+      function renderResult() {
+        viewMode = "result";
+        const result = buildResult();
+        const accentOption = selections[1];
+        setAccent(accentOption);
+        updateProgress(3);
+        stepLabel.textContent = "READY";
+        backButton.hidden = false;
+        journeyContent.innerHTML = `
+          <div class="panel result-panel">
+            <article class="result-card" aria-label="你的今日小签">
+              <span class="result-kicker">YOUR NOTE · ${result.sign}</span>
+              <h2 id="dialogTitle">${result.title}</h2>
+              <div class="result-copy">${result.html}</div>
+              <div class="tokens" aria-label="你刚才的三个选择">
+                ${selections.map((option) => `<span class="token"><i>${option.symbol}</i>${option.label}</span>`).join("")}
+              </div>
+            </article>
+            <div class="result-actions">
+              <button class="secondary-button" type="button" data-action="restart">重新选择</button>
+              <button class="primary-button" type="button" data-action="accept">收下这张小签</button>
+            </div>
+            <div class="copy-row">
+              <button class="copy-button" type="button" data-action="copy">复制这段祝福</button>
+            </div>
+          </div>`;
+        journeyContent.querySelector("[data-action='restart']").addEventListener("click", () => {
+          selections = [];
+          stageIndex = 0;
+          renderQuestion();
+        });
+        journeyContent.querySelector("[data-action='accept']").addEventListener("click", renderAccepted);
+        journeyContent.querySelector("[data-action='copy']").addEventListener("click", () => copyText(result.text));
+        focusSoon(journeyContent.querySelector("[data-action='accept']"));
+      }
+
+      function renderAccepted() {
+        viewMode = "accepted";
+        updateProgress(3);
+        stepLabel.textContent = "DONE";
+        backButton.hidden = false;
+        liveStatus.textContent = "祝福已送达";
+        journeyContent.innerHTML = `
+          <div class="sparkles" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="panel accepted">
+            <div class="accepted-seal" aria-hidden="true">✓</div>
+            <p class="panel-kicker">DELIVERED · 已送达</p>
+            <h2 id="dialogTitle">祝福已送达</h2>
+            <p class="panel-lead">
+              就到这里啦。<br><br>
+              愿你忙时有条理，闲时有欢喜；<br>
+              遇到难题不慌，等到好消息也不意外。<br><br>
+              不用回复，也不用特意记住这一页。<br>
+              关掉以后，照常去过你的好日子。
+            </p>
+            <button class="panel-action" type="button" data-action="finish">
+              <span>收下，继续今天</span><span aria-hidden="true">✓</span>
+            </button>
+            <p class="tiny-note">愿一切平常，也一切顺利。</p>
+          </div>`;
+        const finishButton = journeyContent.querySelector("[data-action='finish']");
+        finishButton.addEventListener("click", closeExperience);
+        focusSoon(finishButton);
+      }
+
+      async function copyText(text) {
+        let copied = false;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            copied = true;
+          }
+        } catch (error) {
+          copied = false;
+        }
+
+        if (!copied) {
+          const area = document.createElement("textarea");
+          area.value = text;
+          area.setAttribute("readonly", "");
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.select();
+          copied = document.execCommand("copy");
+          area.remove();
+        }
+
+        showToast(copied ? "已复制这段祝福" : "长按小签文字即可复制");
+      }
+
+      function showToast(message) {
+        window.clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("show");
+        toastTimer = window.setTimeout(() => toast.classList.remove("show"), 1900);
+      }
+
+      function focusSoon(element) {
+        if (!element) return;
+        window.requestAnimationFrame(() => element.focus({ preventScroll: true }));
+      }
+
+      function openExperience() {
+        lastFocused = document.activeElement;
+        experience.hidden = false;
+        document.getElementById("home").inert = true;
+        openButton.setAttribute("aria-expanded", "true");
+        document.body.classList.add("dialog-open");
+        stopWishTimer();
+        selections = [];
+        renderIntro();
+        focusSoon(closeButton);
+      }
+
+      function closeExperience() {
+        experience.hidden = true;
+        document.getElementById("home").inert = false;
+        openButton.setAttribute("aria-expanded", "false");
+        document.body.classList.remove("dialog-open");
+        liveStatus.textContent = "互动页面已关闭";
+        startWishTimer();
+        if (lastFocused && typeof lastFocused.focus === "function") {
+          lastFocused.focus({ preventScroll: true });
+        }
+      }
+
+      function goBack() {
+        if (viewMode === "intro") return;
+        if (viewMode === "question") {
+          if (stageIndex === 0) {
+            renderIntro();
+          } else {
+            stageIndex -= 1;
+            renderReflection();
+          }
+          return;
+        }
+        if (viewMode === "reflection") {
+          renderQuestion();
+          return;
+        }
+        if (viewMode === "result" || viewMode === "accepted") {
+          stageIndex = 2;
+          renderReflection();
+        }
+      }
+
+      function trapFocus(event) {
+        if (event.key !== "Tab" || experience.hidden) return;
+        const focusable = [...experience.querySelectorAll(
+          "button:not([hidden]):not([disabled]), a[href], [tabindex]:not([tabindex='-1'])"
+        )].filter((element) => element.offsetParent !== null);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+
+      openButton.addEventListener("click", openExperience);
+      postcard.addEventListener("click", () => setWish(wishIndex + 1));
+      closeButton.addEventListener("click", closeExperience);
+      backButton.addEventListener("click", goBack);
+      experience.addEventListener("mousedown", (event) => {
+        if (event.target === experience) closeExperience();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !experience.hidden) closeExperience();
+        trapFocus(event);
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopWishTimer();
+        else if (experience.hidden) startWishTimer();
+      });
+
+      startWishTimer();
+    })();
   </script>
 </body>
 </html>
