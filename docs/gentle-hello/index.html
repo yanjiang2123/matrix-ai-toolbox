@@ -220,6 +220,77 @@
       text-align: right;
     }
 
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .music-toggle {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(48, 39, 52, 0.16);
+      border-radius: 50%;
+      color: var(--rose-deep);
+      background: rgba(255, 252, 247, 0.48);
+      box-shadow: 0 8px 22px rgba(74, 44, 58, 0.08);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      cursor: pointer;
+      transition: transform 0.22s ease, color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+    }
+
+    .music-toggle:active {
+      transform: scale(0.94);
+    }
+
+    .music-toggle[aria-pressed="true"] {
+      color: #fffaf6;
+      background: var(--rose-deep);
+      border-color: var(--rose-deep);
+    }
+
+    .music-bars {
+      width: 19px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .music-bars i {
+      width: 2px;
+      height: 5px;
+      display: block;
+      border-radius: 99px;
+      background: currentColor;
+      transform-origin: center;
+      animation: music-bar 0.9s ease-in-out infinite alternate;
+      animation-play-state: paused;
+    }
+
+    .music-bars i:nth-child(2) {
+      height: 11px;
+      animation-delay: -0.35s;
+    }
+
+    .music-bars i:nth-child(3) {
+      height: 8px;
+      animation-delay: -0.62s;
+    }
+
+    .music-toggle[aria-pressed="true"] .music-bars i {
+      animation-play-state: running;
+    }
+
+    .dialog-music-toggle[aria-pressed="true"] .music-bars i {
+      animation-play-state: running;
+    }
+
     .hero {
       min-height: calc(100svh - 64px);
       padding: 24px 20px max(26px, env(safe-area-inset-bottom));
@@ -554,7 +625,7 @@
       min-height: 68px;
       padding: 14px 16px 8px;
       display: grid;
-      grid-template-columns: 44px 1fr 44px;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
       align-items: center;
       gap: 10px;
       position: sticky;
@@ -574,6 +645,18 @@
       background: rgba(255, 255, 255, 0.44);
       cursor: pointer;
       transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .journey-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dialog-music-toggle[aria-pressed="true"] {
+      color: #fffaf6;
+      background: var(--accent);
+      border-color: var(--accent);
     }
 
     .icon-button:active {
@@ -1079,6 +1162,11 @@
       to { opacity: 1; transform: translateY(0); filter: none; }
     }
 
+    @keyframes music-bar {
+      from { transform: scaleY(0.58); opacity: 0.7; }
+      to { transform: scaleY(1.28); opacity: 1; }
+    }
+
     @keyframes fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -1137,6 +1225,17 @@
 
       .orbit {
         width: min(77vw, 305px);
+      }
+    }
+
+    @media (max-width: 359px) {
+      .today,
+      .progress-label span:first-child {
+        display: none;
+      }
+
+      .topbar {
+        gap: 10px;
       }
     }
 
@@ -1264,7 +1363,12 @@
         <span class="brand-mark">H</span>
         <span>HELLO NOTE</span>
       </a>
-      <time class="today" id="today" aria-label="今天的日期"></time>
+      <div class="top-actions">
+        <time class="today" id="today" aria-label="今天的日期"></time>
+        <button class="music-toggle" id="musicToggle" type="button" aria-label="轻音乐" aria-pressed="false" title="播放轻音乐">
+          <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+        </button>
+      </div>
     </header>
 
     <section class="hero" aria-labelledby="heroTitle">
@@ -1319,7 +1423,12 @@
             <i id="dotOne"></i><i id="dotTwo"></i><i id="dotThree"></i>
           </span>
         </div>
-        <button class="icon-button" id="closeButton" type="button" aria-label="关闭互动页面">×</button>
+        <div class="journey-actions">
+          <button class="icon-button dialog-music-toggle" id="dialogMusicToggle" type="button" aria-label="轻音乐" aria-pressed="false" title="播放轻音乐">
+            <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          </button>
+          <button class="icon-button" id="closeButton" type="button" aria-label="关闭互动页面">×</button>
+        </div>
       </header>
       <div class="journey-content">
         <div id="journeyContent" aria-live="polite"></div>
@@ -1459,11 +1568,13 @@
       const postcard = document.getElementById("postcard");
       const closeButton = document.getElementById("closeButton");
       const backButton = document.getElementById("backButton");
+      const dialogMusicToggle = document.getElementById("dialogMusicToggle");
       const stepLabel = document.getElementById("stepLabel");
       const dots = ["dotOne", "dotTwo", "dotThree"].map((id) => document.getElementById(id));
       const rotatingWish = document.getElementById("rotatingWish");
       const liveStatus = document.getElementById("liveStatus");
       const toast = document.getElementById("toast");
+      const musicToggle = document.getElementById("musicToggle");
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       let wishIndex = 0;
@@ -1473,6 +1584,23 @@
       let selections = [];
       let lastFocused = null;
       let toastTimer = null;
+      let audioContext = null;
+      let audioInput = null;
+      let masterGain = null;
+      let musicScheduler = null;
+      let nextBarTime = 0;
+      let musicBarIndex = 0;
+      let musicEnabled = false;
+      let musicRunId = 0;
+      let musicSources = new Set();
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const musicProgression = [
+        { bass: 130.81, chord: [261.63, 329.63, 392.00], melody: [659.25, 783.99, 659.25, 523.25] },
+        { bass: 110.00, chord: [220.00, 261.63, 329.63], melody: [659.25, 523.25, 392.00, 523.25] },
+        { bass: 87.31, chord: [174.61, 220.00, 261.63], melody: [523.25, 659.25, 783.99, 659.25] },
+        { bass: 98.00, chord: [196.00, 220.00, 293.66], melody: [587.33, 659.25, 440.00, 587.33] }
+      ];
 
       const now = new Date();
       document.getElementById("today").textContent = new Intl.DateTimeFormat("zh-CN", {
@@ -1503,6 +1631,205 @@
         if (wishTimer === null) return;
         window.clearInterval(wishTimer);
         wishTimer = null;
+      }
+
+      function createImpulse(context, seconds = 2.1, decay = 2.6) {
+        const length = Math.floor(context.sampleRate * seconds);
+        const impulse = context.createBuffer(2, length, context.sampleRate);
+        for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+          const data = impulse.getChannelData(channel);
+          for (let index = 0; index < length; index += 1) {
+            const envelope = Math.pow(1 - index / length, decay);
+            data[index] = (Math.random() * 2 - 1) * envelope;
+          }
+        }
+        return impulse;
+      }
+
+      function createAudioEngine() {
+        const context = new AudioContextClass();
+        const input = context.createGain();
+        const dryGain = context.createGain();
+        const convolver = context.createConvolver();
+        const wetGain = context.createGain();
+        const master = context.createGain();
+        const compressor = context.createDynamicsCompressor();
+
+        dryGain.gain.value = 0.82;
+        wetGain.gain.value = 0.16;
+        master.gain.value = 0.0001;
+        convolver.buffer = createImpulse(context);
+        compressor.threshold.value = -24;
+        compressor.knee.value = 18;
+        compressor.ratio.value = 3;
+        compressor.attack.value = 0.04;
+        compressor.release.value = 0.25;
+
+        input.connect(dryGain);
+        input.connect(convolver);
+        convolver.connect(wetGain);
+        dryGain.connect(master);
+        wetGain.connect(master);
+        master.connect(compressor);
+        compressor.connect(context.destination);
+
+        audioContext = context;
+        audioInput = input;
+        masterGain = master;
+        musicSources = new Set();
+      }
+
+      function scheduleTone(frequency, startTime, duration, level, type = "sine", attack = 0.7) {
+        if (!audioContext || !audioInput) return;
+        const context = audioContext;
+        const input = audioInput;
+        const sources = musicSources;
+        const oscillator = context.createOscillator();
+        const filter = context.createBiquadFilter();
+        const gain = context.createGain();
+        const releaseTime = startTime + duration;
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(type === "triangle" ? 2400 : 1500, startTime);
+        filter.Q.value = 0.6;
+
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.exponentialRampToValueAtTime(level, startTime + Math.min(attack, duration * 0.28));
+        gain.gain.exponentialRampToValueAtTime(0.0001, releaseTime);
+
+        oscillator.connect(filter);
+        filter.connect(gain);
+        gain.connect(input);
+        sources.add(oscillator);
+        oscillator.addEventListener("ended", () => {
+          sources.delete(oscillator);
+          oscillator.disconnect();
+          filter.disconnect();
+          gain.disconnect();
+        }, { once: true });
+        oscillator.start(startTime);
+        oscillator.stop(releaseTime + 0.04);
+      }
+
+      function scheduleBar(startTime, barIndex) {
+        const bar = musicProgression[barIndex % musicProgression.length];
+        scheduleTone(bar.bass, startTime, 7.7, 0.009, "sine", 0.85);
+        bar.chord.forEach((frequency, index) => {
+          scheduleTone(frequency, startTime + index * 0.06, 7.5, 0.008, index === 1 ? "triangle" : "sine", 0.8);
+        });
+        bar.melody.forEach((frequency, index) => {
+          const noteTime = startTime + 0.65 + index * 1.62;
+          scheduleTone(frequency, noteTime, 1.35, 0.015, "sine", 0.06);
+          scheduleTone(frequency * 2, noteTime, 0.72, 0.0025, "sine", 0.035);
+        });
+      }
+
+      function scheduleMusicAhead() {
+        if (!musicEnabled || !audioContext || audioContext.state === "closed") return;
+        while (nextBarTime < audioContext.currentTime + 1.4) {
+          scheduleBar(nextBarTime, musicBarIndex);
+          nextBarTime += 8;
+          musicBarIndex = (musicBarIndex + 1) % musicProgression.length;
+        }
+      }
+
+      function setMusicButton(active) {
+        [musicToggle, dialogMusicToggle].forEach((button) => {
+          button.setAttribute("aria-pressed", String(active));
+          button.setAttribute("aria-label", "轻音乐");
+          button.title = active ? "暂停轻音乐" : "播放轻音乐";
+        });
+      }
+
+      async function startMusic() {
+        if (!AudioContextClass || musicEnabled) return;
+        const runId = ++musicRunId;
+        musicEnabled = true;
+        setMusicButton(true);
+        try {
+          createAudioEngine();
+          const contextForRun = audioContext;
+          await contextForRun.resume();
+          if (!musicEnabled || runId !== musicRunId || audioContext !== contextForRun) {
+            contextForRun.close().catch(() => {});
+            return;
+          }
+          nextBarTime = contextForRun.currentTime + 0.08;
+          musicBarIndex = 0;
+          scheduleMusicAhead();
+          musicScheduler = window.setInterval(scheduleMusicAhead, 550);
+          masterGain.gain.cancelScheduledValues(contextForRun.currentTime);
+          masterGain.gain.setValueAtTime(0.0001, contextForRun.currentTime);
+          masterGain.gain.exponentialRampToValueAtTime(0.5, contextForRun.currentTime + 1.25);
+          showToast("轻音乐已开启");
+        } catch (error) {
+          if (runId === musicRunId) {
+            stopMusic(false);
+            showToast("当前浏览器暂不支持播放");
+          }
+        }
+      }
+
+      function stopMusic(showMessage = true) {
+        musicRunId += 1;
+        musicEnabled = false;
+        setMusicButton(false);
+        if (musicScheduler !== null) {
+          window.clearInterval(musicScheduler);
+          musicScheduler = null;
+        }
+
+        const contextToClose = audioContext;
+        const gainToFade = masterGain;
+        const sourcesToStop = musicSources;
+        if (contextToClose && contextToClose.state !== "closed") {
+          const closeContext = () => {
+            sourcesToStop.forEach((source) => {
+              try { source.stop(); } catch (error) {}
+            });
+            sourcesToStop.clear();
+            contextToClose.close().catch(() => {});
+          };
+          if (contextToClose.state === "running" && gainToFade) {
+            const nowTime = contextToClose.currentTime;
+            gainToFade.gain.cancelScheduledValues(nowTime);
+            gainToFade.gain.setTargetAtTime(0.0001, nowTime, 0.12);
+            window.setTimeout(closeContext, 480);
+          } else {
+            closeContext();
+          }
+        }
+
+        audioContext = null;
+        audioInput = null;
+        masterGain = null;
+        musicSources = new Set();
+        if (showMessage) showToast("轻音乐已暂停");
+      }
+
+      function destroyMusicImmediately() {
+        musicRunId += 1;
+        musicEnabled = false;
+        setMusicButton(false);
+        if (musicScheduler !== null) {
+          window.clearInterval(musicScheduler);
+          musicScheduler = null;
+        }
+        musicSources.forEach((source) => {
+          try { source.stop(); } catch (error) {}
+        });
+        musicSources.clear();
+        if (audioContext && audioContext.state !== "closed") audioContext.close().catch(() => {});
+        audioContext = null;
+        audioInput = null;
+        masterGain = null;
+      }
+
+      function toggleMusic() {
+        if (musicEnabled) stopMusic();
+        else startMusic();
       }
 
       function updateProgress(step) {
@@ -1794,6 +2121,8 @@
 
       openButton.addEventListener("click", openExperience);
       postcard.addEventListener("click", () => setWish(wishIndex + 1));
+      musicToggle.addEventListener("click", toggleMusic);
+      dialogMusicToggle.addEventListener("click", toggleMusic);
       closeButton.addEventListener("click", closeExperience);
       backButton.addEventListener("click", goBack);
       experience.addEventListener("mousedown", (event) => {
@@ -1804,10 +2133,33 @@
         trapFocus(event);
       });
       document.addEventListener("visibilitychange", () => {
-        if (document.hidden) stopWishTimer();
-        else if (experience.hidden) startWishTimer();
+        if (document.hidden) {
+          stopWishTimer();
+          if (musicEnabled && audioContext?.state === "running") audioContext.suspend().catch(() => {});
+        } else {
+          if (experience.hidden) startWishTimer();
+          if (musicEnabled && audioContext?.state === "suspended") {
+            const contextToResume = audioContext;
+            contextToResume.resume().then(() => {
+              if (!musicEnabled || audioContext !== contextToResume) return;
+              if (contextToResume.state !== "running") {
+                stopMusic(false);
+                showToast("点击音乐按钮继续播放");
+              }
+            }).catch(() => {
+              if (!musicEnabled || audioContext !== contextToResume) return;
+              stopMusic(false);
+              showToast("点击音乐按钮继续播放");
+            });
+          }
+        }
       });
+      window.addEventListener("pagehide", destroyMusicImmediately);
 
+      if (!AudioContextClass) {
+        musicToggle.hidden = true;
+        dialogMusicToggle.hidden = true;
+      }
       startWishTimer();
     })();
   </script>
