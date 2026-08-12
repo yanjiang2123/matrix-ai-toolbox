@@ -38,6 +38,15 @@
       --shadow: rgba(71, 42, 57, 0.17);
       --accent: #9b526d;
       --accent-soft: rgba(155, 82, 109, 0.14);
+      --pointer-x: 50%;
+      --pointer-y: 42%;
+      --tilt-x: 0deg;
+      --tilt-y: 0deg;
+      --journey-direction: 1;
+      --journey-grain: 0.28;
+      --journey-speed: 8s;
+      --music-beat: 1.154s;
+      --music-bar: 4.615s;
     }
 
     * {
@@ -73,6 +82,7 @@
     button,
     a {
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     button {
@@ -100,6 +110,19 @@
         radial-gradient(circle at 78% 18%, rgba(255, 240, 222, 0.94) 0 9%, transparent 29%),
         radial-gradient(circle at 10% 84%, rgba(205, 164, 184, 0.34), transparent 33%),
         linear-gradient(152deg, #fbf6ef 0%, #f2e5e4 52%, #e3d6df 100%);
+    }
+
+    .page::after {
+      content: "";
+      position: absolute;
+      inset: -18%;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.5;
+      background:
+        radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.72), transparent 18%),
+        conic-gradient(from 210deg at 50% 50%, transparent, rgba(181, 122, 148, 0.07), transparent 38%);
+      transition: opacity 0.4s ease;
     }
 
     .page::before {
@@ -183,7 +206,7 @@
 
     .topbar {
       min-height: 64px;
-      padding: max(12px, env(safe-area-inset-top)) 20px 8px;
+      padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 8px max(20px, env(safe-area-inset-left));
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -232,6 +255,8 @@
       display: grid;
       place-items: center;
       flex: 0 0 auto;
+      position: relative;
+      isolation: isolate;
       border: 1px solid rgba(48, 39, 52, 0.16);
       border-radius: 50%;
       color: var(--rose-deep);
@@ -251,6 +276,19 @@
       color: #fffaf6;
       background: var(--rose-deep);
       border-color: var(--rose-deep);
+      animation: music-breathe var(--music-bar) ease-in-out infinite;
+    }
+
+    .music-toggle[aria-pressed="true"]::after,
+    .dialog-music-toggle[aria-pressed="true"]::after {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border: 1px solid currentColor;
+      border-radius: inherit;
+      opacity: 0.34;
+      pointer-events: none;
+      animation: music-ripple 2.8s ease-out infinite;
     }
 
     .music-bars {
@@ -269,7 +307,7 @@
       border-radius: 99px;
       background: currentColor;
       transform-origin: center;
-      animation: music-bar 0.9s ease-in-out infinite alternate;
+      animation: music-bar var(--music-beat) ease-in-out infinite alternate;
       animation-play-state: paused;
     }
 
@@ -349,6 +387,20 @@
       place-items: center;
       position: relative;
       z-index: 2;
+      perspective: 1100px;
+    }
+
+    .stage-caption {
+      position: absolute;
+      top: 50%;
+      left: calc(50% + min(39vw, 145px));
+      z-index: 4;
+      width: max-content;
+      color: rgba(80, 60, 71, 0.62);
+      font: 8px/1.4 Georgia, "Times New Roman", serif;
+      letter-spacing: 0.18em;
+      writing-mode: vertical-rl;
+      transform: translateY(-50%);
     }
 
     .halo {
@@ -410,10 +462,15 @@
       border-radius: 4px;
       box-shadow: 0 28px 70px rgba(75, 44, 59, 0.19);
       backdrop-filter: blur(18px);
-      transform: rotate(2deg);
+      transform: rotate(2deg) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+      transform-style: preserve-3d;
       cursor: pointer;
       animation: postcard-in 0.95s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
-      transition: transform 0.35s ease, box-shadow 0.35s ease;
+      transition: transform 0.25s ease, box-shadow 0.35s ease;
+    }
+
+    .postcard::selection {
+      background: transparent;
     }
 
     .postcard:active {
@@ -497,6 +554,15 @@
       animation: reverse-spin 18s linear infinite;
     }
 
+    .weather-seal-core {
+      width: 8px;
+      height: 8px;
+      position: absolute;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 7px rgba(155, 82, 109, 0.09), 0 0 24px currentColor;
+    }
+
     .rotating-wish {
       width: 90%;
       margin: auto auto 30px;
@@ -537,6 +603,43 @@
       box-shadow: 0 16px 38px rgba(111, 52, 79, 0.22);
       cursor: pointer;
       transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .start-button {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .start-button::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.28) 48%, transparent 76%);
+      transform: translateX(-120%);
+      animation: button-glint 5.6s 1.8s ease-in-out infinite;
+    }
+
+    .start-button > span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-proof {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+
+    .hero-proof i {
+      width: 4px;
+      height: 4px;
+      display: block;
+      border-radius: 50%;
+      background: var(--rose-soft);
     }
 
     .start-button:active {
@@ -598,6 +701,51 @@
       transition: background 0.55s ease;
     }
 
+    .experience-glow::before,
+    .experience-glow::after {
+      content: "";
+      position: absolute;
+      inset: 18%;
+      border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+      border-radius: 47% 53% 44% 56%;
+      animation: seal-morph 8s ease-in-out infinite, spin 38s linear infinite;
+    }
+
+    .experience-glow::after {
+      inset: 31%;
+      animation-direction: alternate-reverse;
+      animation-duration: 10s, 30s;
+    }
+
+    .journey-atmosphere {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: var(--journey-grain);
+      transition: opacity 0.5s ease;
+    }
+
+    .journey-atmosphere i {
+      --x: 20%;
+      --delay: 0s;
+      position: absolute;
+      left: var(--x);
+      bottom: -12px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+      animation: atmosphere-rise var(--journey-speed) var(--delay) ease-in infinite;
+    }
+
+    .journey-atmosphere i:nth-child(1) { --x: 9%; --delay: -1s; }
+    .journey-atmosphere i:nth-child(2) { --x: 27%; --delay: -6s; }
+    .journey-atmosphere i:nth-child(3) { --x: 48%; --delay: -3s; }
+    .journey-atmosphere i:nth-child(4) { --x: 69%; --delay: -7s; }
+    .journey-atmosphere i:nth-child(5) { --x: 88%; --delay: -4s; }
+
     .journey-shell {
       width: min(100%, 560px);
       max-height: 100%;
@@ -617,6 +765,20 @@
       scrollbar-width: none;
     }
 
+    .journey-shell::after {
+      content: "";
+      height: 26px;
+      position: sticky;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: block;
+      z-index: 5;
+      margin-top: -26px;
+      pointer-events: none;
+      background: linear-gradient(to top, rgba(249, 241, 237, 0.88), transparent);
+    }
+
     .journey-shell::-webkit-scrollbar {
       display: none;
     }
@@ -625,7 +787,7 @@
       min-height: 68px;
       padding: 14px 16px 8px;
       display: grid;
-      grid-template-columns: 44px minmax(0, 1fr) auto;
+      grid-template-columns: 94px minmax(0, 1fr) 94px;
       align-items: center;
       gap: 10px;
       position: sticky;
@@ -639,6 +801,8 @@
       height: 44px;
       display: grid;
       place-items: center;
+      position: relative;
+      isolation: isolate;
       border: 1px solid rgba(74, 49, 62, 0.13);
       border-radius: 50%;
       color: var(--ink-soft);
@@ -651,12 +815,14 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      justify-content: flex-end;
     }
 
     .dialog-music-toggle[aria-pressed="true"] {
       color: #fffaf6;
       background: var(--accent);
       border-color: var(--accent);
+      animation: music-breathe var(--music-bar) ease-in-out infinite;
     }
 
     .icon-button:active {
@@ -666,6 +832,7 @@
     .progress {
       min-width: 0;
       text-align: center;
+      position: relative;
     }
 
     .progress-label {
@@ -710,13 +877,25 @@
     .panel {
       width: 100%;
       margin: auto 0;
-      animation: panel-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: panel-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .panel::before {
+      content: "";
+      width: 38px;
+      height: 1px;
+      margin-bottom: 17px;
+      display: block;
+      background: var(--accent);
+      opacity: 0.55;
+      transform-origin: left;
+      animation: line-reveal 0.65s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     .panel-kicker {
       margin: 0 0 18px;
       color: var(--accent);
-      font: 700 9px/1.4 Georgia, "Times New Roman", serif;
+      font: 700 11px/1.4 Georgia, "Times New Roman", serif;
       letter-spacing: 0.22em;
       transition: color 0.35s ease;
     }
@@ -742,7 +921,7 @@
     .panel-hint {
       margin: 12px 0 0;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 12px;
       line-height: 1.7;
       letter-spacing: 0.04em;
     }
@@ -773,7 +952,7 @@
       margin: 13px 0 0;
       color: var(--muted);
       text-align: center;
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: 0.1em;
     }
 
@@ -798,6 +977,25 @@
       border-radius: 18px;
       cursor: pointer;
       transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+      animation: choice-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .choice:nth-child(2) { animation-delay: 0.06s; }
+    .choice:nth-child(3) { animation-delay: 0.12s; }
+
+    .choice.selected {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      transform: scale(0.985);
+    }
+
+    .choice.selected .choice-arrow {
+      transform: translateX(5px);
+    }
+
+    .choice-arrow {
+      transition: transform 0.22s ease;
     }
 
     .choice:active {
@@ -841,12 +1039,13 @@
 
     .choice-copy small {
       margin-top: 5px;
-      overflow: hidden;
       color: var(--muted);
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.4;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
     }
 
     .choice-arrow {
@@ -897,6 +1096,16 @@
       box-shadow: 0 25px 58px rgba(73, 45, 59, 0.14);
     }
 
+    .result-card::after {
+      content: "✦";
+      position: absolute;
+      right: 23px;
+      bottom: 20px;
+      color: var(--accent);
+      font: 12px/1 Georgia, "Times New Roman", serif;
+      opacity: 0.45;
+    }
+
     .result-card::before {
       content: "";
       position: absolute;
@@ -912,7 +1121,7 @@
     .result-kicker {
       position: relative;
       color: var(--accent);
-      font: 700 9px/1.4 Georgia, "Times New Roman", serif;
+      font: 700 11px/1.4 Georgia, "Times New Roman", serif;
       letter-spacing: 0.2em;
     }
 
@@ -960,7 +1169,7 @@
       border-radius: 999px;
       color: var(--ink-soft);
       background: rgba(255, 252, 248, 0.68);
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: 0.04em;
     }
 
@@ -1014,7 +1223,7 @@
       padding: 0 16px;
       color: var(--muted);
       background: transparent;
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: 0.08em;
       cursor: pointer;
     }
@@ -1158,13 +1367,45 @@
     }
 
     @keyframes wish-change {
-      from { opacity: 0; transform: translateY(7px); filter: blur(3px); }
-      to { opacity: 1; transform: translateY(0); filter: none; }
+      from { opacity: 0; transform: translateY(7px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes music-bar {
-      from { transform: scaleY(0.58); opacity: 0.7; }
-      to { transform: scaleY(1.28); opacity: 1; }
+      from { transform: scaleY(0.72); opacity: 0.72; }
+      to { transform: scaleY(1.08); opacity: 1; }
+    }
+
+    @keyframes music-breathe {
+      0%, 100% { box-shadow: 0 8px 22px rgba(74, 44, 58, 0.08), 0 0 0 0 rgba(155, 82, 109, 0); }
+      50% { box-shadow: 0 8px 22px rgba(74, 44, 58, 0.1), 0 0 0 4px rgba(155, 82, 109, 0.07); }
+    }
+
+    @keyframes music-ripple {
+      0% { opacity: 0.38; transform: scale(0.86); }
+      70%, 100% { opacity: 0; transform: scale(1.38); }
+    }
+
+    @keyframes button-glint {
+      0%, 68% { transform: translateX(-120%); }
+      84%, 100% { transform: translateX(120%); }
+    }
+
+    @keyframes line-reveal {
+      from { opacity: 0; transform: scaleX(0); }
+      to { opacity: 0.55; transform: scaleX(1); }
+    }
+
+    @keyframes choice-in {
+      from { opacity: 0; transform: translateY(13px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes atmosphere-rise {
+      0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.6); }
+      18% { opacity: 0.75; }
+      72% { opacity: 0.35; }
+      100% { opacity: 0; transform: translate3d(16px, -92vh, 0) scale(1.3); }
     }
 
     @keyframes fade-in {
@@ -1178,8 +1419,8 @@
     }
 
     @keyframes panel-in {
-      from { opacity: 0; transform: translateX(16px); filter: blur(3px); }
-      to { opacity: 1; transform: translateX(0); filter: none; }
+      from { opacity: 0; transform: translateX(calc(16px * var(--journey-direction))); }
+      to { opacity: 1; transform: translateX(0); }
     }
 
     @keyframes accepted-pop {
@@ -1228,6 +1469,38 @@
       }
     }
 
+    @media (max-width: 599px) {
+      .experience {
+        padding: 0;
+        place-items: stretch;
+      }
+
+      .journey-shell {
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        max-height: none;
+        min-height: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .journey-topbar {
+        min-height: calc(64px + env(safe-area-inset-top));
+        padding-top: max(12px, env(safe-area-inset-top));
+      }
+
+      .journey-content {
+        min-height: calc(100dvh - 76px - env(safe-area-inset-top));
+        padding: 24px 22px max(30px, env(safe-area-inset-bottom));
+      }
+
+      .panel h2 {
+        font-size: clamp(32px, 10.5vw, 44px);
+      }
+    }
+
     @media (max-width: 359px) {
       .today,
       .progress-label span:first-child {
@@ -1237,9 +1510,13 @@
       .topbar {
         gap: 10px;
       }
+
+      .stage-caption {
+        display: none;
+      }
     }
 
-    @media (min-width: 800px) {
+    @media (min-width: 800px) and (min-height: 600px) {
       .topbar {
         min-height: 82px;
         padding: 18px 5vw;
@@ -1321,14 +1598,57 @@
         font-size: 17px;
       }
 
+    }
+
+    @media (min-width: 800px) and (min-height: 600px) and (hover: hover) and (pointer: fine) {
       .postcard:hover {
-        transform: rotate(0.5deg) translateY(-5px);
+        transform: rotate(0.5deg) translateY(-5px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
         box-shadow: 0 34px 82px rgba(75, 44, 59, 0.23);
       }
 
       .start-button:hover {
         transform: translateY(-2px);
         box-shadow: 0 20px 44px rgba(111, 52, 79, 0.28);
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 500px) {
+      .topbar {
+        min-height: 54px;
+        padding-top: max(6px, env(safe-area-inset-top));
+      }
+
+      .hero {
+        min-height: calc(100dvh - 54px);
+        grid-template-columns: minmax(250px, 0.9fr) minmax(250px, 1.1fr);
+        grid-template-rows: 1fr auto;
+        padding: 6px max(26px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(26px, env(safe-area-inset-left));
+        column-gap: 34px;
+      }
+
+      .hero-copy { text-align: left; }
+      .hero h1 { font-size: clamp(34px, 7vw, 52px); }
+      .hero-subtitle { margin: 8px 0 0; line-height: 1.5; }
+      .postcard-stage { grid-column: 2; grid-row: 1 / span 2; min-height: 250px; }
+      .postcard { width: min(31vh, 170px); }
+      .halo { width: min(48vh, 220px); }
+      .orbit { width: min(62vh, 275px); }
+      .stage-caption { display: none; }
+      .hero-actions { grid-column: 1; align-items: flex-start; }
+      .duration-note, .hero-proof { display: none; }
+      .journey-topbar { padding-right: max(16px, env(safe-area-inset-right)); padding-left: max(16px, env(safe-area-inset-left)); }
+      .journey-content { padding-right: max(26px, env(safe-area-inset-right)); padding-left: max(26px, env(safe-area-inset-left)); }
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      .choice:hover {
+        border-color: rgba(74, 49, 62, 0.12);
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      .choice.selected {
+        border-color: var(--accent);
+        background: var(--accent-soft);
       }
     }
 
@@ -1365,7 +1685,7 @@
       </a>
       <div class="top-actions">
         <time class="today" id="today" aria-label="今天的日期"></time>
-        <button class="music-toggle" id="musicToggle" type="button" aria-label="贝多芬古典配乐" aria-pressed="false" title="播放贝多芬古典配乐">
+        <button class="music-toggle" id="musicToggle" type="button" aria-label="古典钢琴" aria-pressed="false" title="播放古典钢琴">
           <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
         </button>
       </div>
@@ -1387,12 +1707,13 @@
       <div class="postcard-stage" aria-label="会变换文字的今日问候卡片">
         <div class="halo" aria-hidden="true"></div>
         <div class="orbit" aria-hidden="true"></div>
+        <span class="stage-caption" aria-hidden="true">TAP THE NOTE · 换一句</span>
         <button class="postcard" id="postcard" type="button" aria-label="换一句祝福">
           <span class="postcard-head">
-            <span>DAY NOTE · 08</span>
+            <span id="cardMonth">DAY NOTE</span>
             <span id="cardDate">TODAY</span>
           </span>
-          <span class="weather-seal" aria-hidden="true"><span>✦</span></span>
+          <span class="weather-seal" aria-hidden="true"><span class="weather-seal-core"></span><span>✦</span></span>
           <span class="rotating-wish" id="rotatingWish">愿忙时有条理，闲时有欢喜。</span>
           <span class="postcard-foot">
             <span>GOOD DAY</span>
@@ -1408,23 +1729,25 @@
           <span aria-hidden="true">→</span>
         </button>
         <p class="duration-note">大约需要 20 秒 · 凭第一感觉就好</p>
+        <span class="hero-proof" aria-hidden="true"><i></i> 三次选择 · 一张今日小签 <i></i></span>
       </div>
     </section>
   </main>
 
   <section class="experience" id="experience" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" hidden>
     <div class="experience-glow" aria-hidden="true"></div>
+    <div class="journey-atmosphere" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     <article class="journey-shell">
       <header class="journey-topbar">
         <button class="icon-button" id="backButton" type="button" aria-label="返回上一步" hidden>←</button>
-        <div class="progress" aria-label="互动进度">
+        <div class="progress" role="progressbar" aria-label="互动进度" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="准备开始">
           <span class="progress-label"><span>A LITTLE JOURNEY</span><span id="stepLabel">00 / 03</span></span>
           <span class="progress-dots" aria-hidden="true">
             <i id="dotOne"></i><i id="dotTwo"></i><i id="dotThree"></i>
           </span>
         </div>
         <div class="journey-actions">
-          <button class="icon-button dialog-music-toggle" id="dialogMusicToggle" type="button" aria-label="贝多芬古典配乐" aria-pressed="false" title="播放贝多芬古典配乐">
+          <button class="icon-button dialog-music-toggle" id="dialogMusicToggle" type="button" aria-label="古典钢琴" aria-pressed="false" title="播放古典钢琴">
             <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
           </button>
           <button class="icon-button" id="closeButton" type="button" aria-label="关闭互动页面">×</button>
@@ -1564,6 +1887,7 @@
 
       const experience = document.getElementById("experience");
       const journeyContent = document.getElementById("journeyContent");
+      const journeyShell = experience.querySelector(".journey-shell");
       const openButton = document.getElementById("openExperience");
       const postcard = document.getElementById("postcard");
       const closeButton = document.getElementById("closeButton");
@@ -1584,6 +1908,7 @@
       let selections = [];
       let lastFocused = null;
       let toastTimer = null;
+      let pendingTransitionTimer = null;
       let audioContext = null;
       let audioInput = null;
       let masterGain = null;
@@ -1594,6 +1919,7 @@
       let musicRunId = 0;
       let musicSources = new Set();
       let pendingSuspendPromise = null;
+      let pianoWave = null;
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       const MOONLIGHT_BPM = 52;
@@ -1614,6 +1940,8 @@
         { bass: [[49, 0, 2], [42, 2, 2]], arp: [[56, 61, 64], [56, 61, 64], [57, 61, 66], [57, 61, 66]], melody: [[68, 0, 2], [69, 2, 2]] },
         { bass: [[47, 0, 2], [47, 2, 2]], arp: [[56, 59, 64], [56, 59, 64], [57, 59, 63], [57, 59, 63]], melody: [[68, 0, 2], [66, 2, 1], [71, 3, 1]] }
       ];
+      const BAR_DYNAMICS = [0.82, 0.85, 0.89, 0.86, 0.94, 1, 0.96, 0.87];
+      const TRIPLET_DYNAMICS = [1, 0.86, 0.9];
 
       const now = new Date();
       document.getElementById("today").textContent = new Intl.DateTimeFormat("zh-CN", {
@@ -1625,6 +1953,7 @@
         month: "short",
         day: "2-digit"
       }).format(now).toUpperCase();
+      document.getElementById("cardMonth").textContent = `DAY NOTE · ${String(now.getMonth() + 1).padStart(2, "0")}`;
       document.getElementById("cardYear").textContent = String(now.getFullYear());
 
       function setWish(nextIndex) {
@@ -1677,6 +2006,10 @@
         compressor.ratio.value = 3;
         compressor.attack.value = 0.04;
         compressor.release.value = 0.25;
+        pianoWave = context.createPeriodicWave(
+          new Float32Array([0, 0, 0, 0, 0, 0]),
+          new Float32Array([0, 1, 0.13, 0.045, 0.018, 0.007])
+        );
 
         input.connect(dryGain);
         input.connect(convolver);
@@ -1697,15 +2030,21 @@
         const context = audioContext;
         const input = audioInput;
         const sources = musicSources;
+        const wave = pianoWave;
         const oscillator = context.createOscillator();
         const filter = context.createBiquadFilter();
         const gain = context.createGain();
         const releaseTime = startTime + duration;
 
-        oscillator.type = type;
+        if (wave) oscillator.setPeriodicWave(wave);
+        else oscillator.type = type;
         oscillator.frequency.setValueAtTime(frequency, startTime);
         filter.type = "lowpass";
-        filter.frequency.setValueAtTime(cutoff, startTime);
+        filter.frequency.setValueAtTime(Math.min(2600, cutoff * 1.15), startTime);
+        filter.frequency.exponentialRampToValueAtTime(
+          Math.max(520, cutoff * 0.72),
+          startTime + Math.min(0.42, duration * 0.42)
+        );
         filter.Q.value = 0.6;
 
         gain.gain.setValueAtTime(0.0001, startTime);
@@ -1728,27 +2067,33 @@
 
       function scheduleBar(startTime, barIndex) {
         const bar = MOONLIGHT_BARS[barIndex % MOONLIGHT_BARS.length];
+        const phrase = BAR_DYNAMICS[barIndex % BAR_DYNAMICS.length];
 
         bar.bass.forEach(([midi, offset, duration]) => {
           const noteTime = startTime + offset * BEAT_SECONDS;
           const noteDuration = duration * BEAT_SECONDS * 0.98;
-          scheduleTone(midiToHz(midi), noteTime, noteDuration, 0.007, "sine", 0.42, 1050);
-          scheduleTone(midiToHz(midi + 12), noteTime, Math.min(noteDuration, 1.7), 0.0011, "sine", 0.28, 1250);
+          scheduleTone(midiToHz(midi), noteTime, noteDuration, 0.0075 * phrase, "sine", 0.42, 1050);
         });
 
         bar.arp.forEach((triad, beatIndex) => {
           triad.forEach((midi, tripletIndex) => {
             const noteTime = startTime + beatIndex * BEAT_SECONDS + tripletIndex * TRIPLET_SECONDS;
-            scheduleTone(midiToHz(midi), noteTime, TRIPLET_SECONDS * 3.05, 0.0075, "sine", 0.028, 1450);
-            scheduleTone(midiToHz(midi + 12), noteTime, TRIPLET_SECONDS * 1.15, 0.0009, "sine", 0.018, 1850);
+            scheduleTone(
+              midiToHz(midi),
+              noteTime,
+              TRIPLET_SECONDS * 3.05,
+              0.0082 * phrase * TRIPLET_DYNAMICS[tripletIndex],
+              "sine",
+              0.028,
+              1450
+            );
           });
         });
 
         bar.melody.forEach(([midi, offset, duration]) => {
           const noteTime = startTime + offset * BEAT_SECONDS;
           const noteDuration = Math.max(0.24, duration * BEAT_SECONDS * 0.97);
-          scheduleTone(midiToHz(midi), noteTime, noteDuration, 0.0135, "sine", 0.045, 1850);
-          scheduleTone(midiToHz(midi + 12), noteTime, Math.min(noteDuration, 0.72), 0.0018, "sine", 0.025, 2200);
+          scheduleTone(midiToHz(midi), noteTime, noteDuration, 0.014 * phrase, "sine", 0.045, 1850);
         });
       }
 
@@ -1775,8 +2120,8 @@
       function setMusicButton(active) {
         [musicToggle, dialogMusicToggle].forEach((button) => {
           button.setAttribute("aria-pressed", String(active));
-          button.setAttribute("aria-label", "贝多芬古典配乐");
-          button.title = active ? "暂停贝多芬古典配乐" : "播放贝多芬古典配乐";
+          button.setAttribute("aria-label", "古典钢琴");
+          button.title = active ? "暂停古典钢琴" : "播放古典钢琴";
         });
       }
 
@@ -1803,8 +2148,8 @@
           startMusicScheduler();
           masterGain.gain.cancelScheduledValues(contextForRun.currentTime);
           masterGain.gain.setValueAtTime(0.0001, contextForRun.currentTime);
-          masterGain.gain.exponentialRampToValueAtTime(0.42, contextForRun.currentTime + 1.25);
-          showToast("贝多芬古典配乐已开启");
+          masterGain.gain.exponentialRampToValueAtTime(0.42, contextForRun.currentTime + 2.2);
+          showToast("古典钢琴已开启");
         } catch (error) {
           if (runId === musicRunId) {
             stopMusic(false);
@@ -1834,8 +2179,8 @@
           if (contextToClose.state === "running" && gainToFade) {
             const nowTime = contextToClose.currentTime;
             gainToFade.gain.cancelScheduledValues(nowTime);
-            gainToFade.gain.setTargetAtTime(0.0001, nowTime, 0.12);
-            window.setTimeout(closeContext, 480);
+            gainToFade.gain.setTargetAtTime(0.0001, nowTime, 0.16);
+            window.setTimeout(closeContext, 650);
           } else {
             closeContext();
           }
@@ -1844,8 +2189,9 @@
         audioContext = null;
         audioInput = null;
         masterGain = null;
+        pianoWave = null;
         musicSources = new Set();
-        if (showMessage) showToast("贝多芬古典配乐已暂停");
+        if (showMessage) showToast("古典钢琴已暂停");
       }
 
       function destroyMusicImmediately() {
@@ -1862,6 +2208,7 @@
         audioContext = null;
         audioInput = null;
         masterGain = null;
+        pianoWave = null;
       }
 
       function toggleMusic() {
@@ -1879,11 +2226,18 @@
           if (suspension) await suspension;
           if (pendingSuspendPromise === suspension) pendingSuspendPromise = null;
           if (document.hidden || !musicEnabled || musicRunId !== resumeRunId || audioContext !== contextToResume) return;
+          if (masterGain) {
+            masterGain.gain.cancelScheduledValues(contextToResume.currentTime);
+            masterGain.gain.setValueAtTime(0.0001, contextToResume.currentTime);
+          }
           if (contextToResume.state !== "running") await contextToResume.resume();
           if (document.hidden || !musicEnabled || musicRunId !== resumeRunId || audioContext !== contextToResume) return;
           if (contextToResume.state !== "running") throw new Error("Audio context did not resume");
           if (nextBarTime < contextToResume.currentTime + 0.04) {
             nextBarTime = contextToResume.currentTime + 0.08;
+          }
+          if (masterGain) {
+            masterGain.gain.exponentialRampToValueAtTime(0.42, contextToResume.currentTime + 0.55);
           }
           scheduleMusicAhead();
           startMusicScheduler();
@@ -1897,6 +2251,8 @@
       function updateProgress(step) {
         const visibleStep = Math.max(0, Math.min(3, step));
         stepLabel.textContent = visibleStep === 0 ? "00 / 03" : `${String(visibleStep).padStart(2, "0")} / 03`;
+        document.querySelector(".progress").setAttribute("aria-valuenow", String(visibleStep));
+        document.querySelector(".progress").setAttribute("aria-valuetext", visibleStep === 0 ? "准备开始" : `第 ${visibleStep} 步，共 3 步`);
         dots.forEach((dot, index) => dot.classList.toggle("active", index < visibleStep));
       }
 
@@ -1905,11 +2261,28 @@
         const soft = option?.soft || "rgba(155, 82, 109, 0.14)";
         experience.style.setProperty("--accent", accent);
         experience.style.setProperty("--accent-soft", soft);
+        const density = Math.min(0.54, 0.2 + selections.length * 0.1);
+        const speed = selections[2]?.label === "不赶时间" ? "12s" : selections[2]?.label === "只管下一步" ? "7s" : "15s";
+        experience.style.setProperty("--journey-grain", String(density));
+        experience.style.setProperty("--journey-speed", speed);
+      }
+
+      function resetJourneyScroll() {
+        window.requestAnimationFrame(() => {
+          journeyShell.scrollTo({ top: 0, behavior: "auto" });
+        });
+      }
+
+      function cancelPendingTransition() {
+        if (pendingTransitionTimer === null) return;
+        window.clearTimeout(pendingTransitionTimer);
+        pendingTransitionTimer = null;
       }
 
       function renderIntro() {
         stageIndex = -1;
         viewMode = "intro";
+        document.documentElement.style.setProperty("--journey-direction", "1");
         updateProgress(0);
         setAccent(null);
         backButton.hidden = true;
@@ -1928,6 +2301,7 @@
             </button>
             <p class="tiny-note">没有正确答案 · 也不会记录任何选择</p>
           </div>`;
+        resetJourneyScroll();
         journeyContent.querySelector("[data-action='begin']").addEventListener("click", () => {
           stageIndex = 0;
           renderQuestion();
@@ -1957,6 +2331,7 @@
                 </button>`).join("")}
             </div>
           </div>`;
+        resetJourneyScroll();
         journeyContent.querySelectorAll("[data-choice]").forEach((button) => {
           button.addEventListener("click", () => selectOption(Number(button.dataset.choice)));
         });
@@ -1964,9 +2339,22 @@
       }
 
       function selectOption(optionIndex) {
-        selections[stageIndex] = stages[stageIndex].options[optionIndex];
-        selections = selections.slice(0, stageIndex + 1);
-        renderReflection();
+        cancelPendingTransition();
+        const selectedStageIndex = stageIndex;
+        const selectedOption = stages[selectedStageIndex].options[optionIndex];
+        const selectedButton = journeyContent.querySelector(`[data-choice="${optionIndex}"]`);
+        const allChoices = [...journeyContent.querySelectorAll("[data-choice]")];
+        allChoices.forEach((button) => {
+          button.disabled = true;
+          button.classList.toggle("selected", button === selectedButton);
+        });
+        selections[selectedStageIndex] = selectedOption;
+        selections = selections.slice(0, selectedStageIndex + 1);
+        pendingTransitionTimer = window.setTimeout(() => {
+          pendingTransitionTimer = null;
+          if (experience.hidden || viewMode !== "question" || stageIndex !== selectedStageIndex || selections[selectedStageIndex] !== selectedOption) return;
+          renderReflection();
+        }, reduceMotion ? 0 : 220);
       }
 
       function renderReflection() {
@@ -1986,8 +2374,10 @@
               <span aria-hidden="true">→</span>
             </button>
           </div>`;
+        resetJourneyScroll();
         const continueButton = journeyContent.querySelector("[data-action='continue']");
         continueButton.addEventListener("click", () => {
+          document.documentElement.style.setProperty("--journey-direction", "1");
           if (stageIndex < stages.length - 1) {
             stageIndex += 1;
             renderQuestion();
@@ -2039,7 +2429,9 @@
               <button class="copy-button" type="button" data-action="copy">复制这段祝福</button>
             </div>
           </div>`;
+        resetJourneyScroll();
         journeyContent.querySelector("[data-action='restart']").addEventListener("click", () => {
+          cancelPendingTransition();
           selections = [];
           stageIndex = 0;
           renderQuestion();
@@ -2054,7 +2446,7 @@
         updateProgress(3);
         stepLabel.textContent = "DONE";
         backButton.hidden = false;
-        liveStatus.textContent = "祝福已送达";
+        liveStatus.textContent = "今日小签已生成";
         journeyContent.innerHTML = `
           <div class="sparkles" aria-hidden="true">
             <i></i><i></i><i></i><i></i><i></i>
@@ -2062,8 +2454,8 @@
           </div>
           <div class="panel accepted">
             <div class="accepted-seal" aria-hidden="true">✓</div>
-            <p class="panel-kicker">DELIVERED · 已送达</p>
-            <h2 id="dialogTitle">祝福已送达</h2>
+            <p class="panel-kicker">YOUR NOTE · 已生成</p>
+            <h2 id="dialogTitle">今日小签已生成</h2>
             <p class="panel-lead">
               就到这里啦。<br><br>
               愿你忙时有条理，闲时有欢喜；<br>
@@ -2072,10 +2464,11 @@
               关掉以后，照常去过你的好日子。
             </p>
             <button class="panel-action" type="button" data-action="finish">
-              <span>收下，继续今天</span><span aria-hidden="true">✓</span>
+              <span>收好，继续今天</span><span aria-hidden="true">✓</span>
             </button>
             <p class="tiny-note">愿一切平常，也一切顺利。</p>
           </div>`;
+        resetJourneyScroll();
         const finishButton = journeyContent.querySelector("[data-action='finish']");
         finishButton.addEventListener("click", closeExperience);
         focusSoon(finishButton);
@@ -2120,6 +2513,7 @@
       }
 
       function openExperience() {
+        cancelPendingTransition();
         lastFocused = document.activeElement;
         experience.hidden = false;
         document.getElementById("home").inert = true;
@@ -2132,6 +2526,7 @@
       }
 
       function closeExperience() {
+        cancelPendingTransition();
         experience.hidden = true;
         document.getElementById("home").inert = false;
         openButton.setAttribute("aria-expanded", "false");
@@ -2144,7 +2539,9 @@
       }
 
       function goBack() {
+        cancelPendingTransition();
         if (viewMode === "intro") return;
+        document.documentElement.style.setProperty("--journey-direction", "-1");
         if (viewMode === "question") {
           if (stageIndex === 0) {
             renderIntro();
@@ -2183,6 +2580,23 @@
 
       openButton.addEventListener("click", openExperience);
       postcard.addEventListener("click", () => setWish(wishIndex + 1));
+      if (!reduceMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        postcard.addEventListener("pointermove", (event) => {
+          const rect = postcard.getBoundingClientRect();
+          const x = (event.clientX - rect.left) / rect.width - 0.5;
+          const y = (event.clientY - rect.top) / rect.height - 0.5;
+          document.documentElement.style.setProperty("--tilt-x", `${(-y * 4.5).toFixed(2)}deg`);
+          document.documentElement.style.setProperty("--tilt-y", `${(x * 5.5).toFixed(2)}deg`);
+        });
+        postcard.addEventListener("pointerleave", () => {
+          document.documentElement.style.setProperty("--tilt-x", "0deg");
+          document.documentElement.style.setProperty("--tilt-y", "0deg");
+        });
+        document.getElementById("home").addEventListener("pointermove", (event) => {
+          document.documentElement.style.setProperty("--pointer-x", `${(event.clientX / window.innerWidth * 100).toFixed(1)}%`);
+          document.documentElement.style.setProperty("--pointer-y", `${(event.clientY / window.innerHeight * 100).toFixed(1)}%`);
+        });
+      }
       musicToggle.addEventListener("click", toggleMusic);
       dialogMusicToggle.addEventListener("click", toggleMusic);
       closeButton.addEventListener("click", closeExperience);
