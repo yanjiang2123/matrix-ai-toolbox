@@ -22,6 +22,18 @@ class ReadonlyAuditTests(unittest.TestCase):
         result = audit_readonly_sql("WITH x AS (DELETE FROM orders) SELECT * FROM x")
         self.assertFalse(result["safe"])
 
+    def test_mysql_executable_comment_is_blocked(self):
+        result = audit_readonly_sql(
+            "SELECT 1 /*!50000 INTO OUTFILE '/tmp/export.txt' */"
+        )
+        self.assertFalse(result["safe"])
+
+    def test_executable_comment_identifier_is_not_a_false_positive(self):
+        result = audit_readonly_sql(
+            "SELECT executable_comment FROM audit_log LIMIT 1"
+        )
+        self.assertTrue(result["safe"])
+
     def test_select_star_is_warning_not_block(self):
         result = audit_readonly_sql("SELECT * FROM orders LIMIT 20")
         self.assertTrue(result["safe"])

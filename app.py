@@ -61,6 +61,10 @@ except Exception as e:  # noqa: BLE001
 CLIENT = core.MatrixClient(CFG)
 UI = CFG.get("ui", {})
 CLIENT_LOCK = threading.RLock()
+JOBS_LOCK = threading.RLock()
+JOBS: dict[str, dict] = {}
+JOB_TTL_SECONDS = 15 * 60
+JOB_MAX_COMPLETED = 32
 SESSION_TOKEN = secrets.token_urlsafe(32)
 UPLOAD_DIR = core.CACHE_DIR.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -228,7 +232,7 @@ def api_connection_test():
                              max_rows=10, timeout=min(candidate.timeout, 60))
     if p.get("apply", True):
         with CLIENT_LOCK:
-            active = sum(1 for job in JOBS.values() if not job.get("done"))
+            active = _active_job_count()
             if active:
                 return fail(f"当前有 {active} 个后台任务正在运行，请等待完成后再切换连接")
             CLIENT = candidate
@@ -255,7 +259,7 @@ def api_connection_disconnect():
         "ui": dict(CFG.get("ui") or {}),
     }
     with CLIENT_LOCK:
-        active = sum(1 for job in JOBS.values() if not job.get("done"))
+        active = _active_job_count()
         if active:
             return fail(f"当前有 {active} 个后台任务正在运行，请等待完成后再断开连接")
         CLIENT = core.MatrixClient(blank)
@@ -399,21 +403,69 @@ def api_databases():
 
 
 # 长任务用后台线程跑，前端轮询进度，避免 HTTP 超时
-JOBS: dict[str, dict] = {}
+
+
+def _prune_jobs_locked(now: float | None = None):
+    """清掉已消费/过期任务，并限制未轮询结果占用的内存。调用方须持有 JOBS_LOCK。"""
+    now = time.time() if now is None else now
+    expired = [
+        jid for jid, job in JOBS.items()
+        if job.get("done")
+        and now - float(job.get("finished_at") or now) >= JOB_TTL_SECONDS
+    ]
+    for jid in expired:
+        JOBS.pop(jid, None)
+
+    completed = [(jid, job) for jid, job in JOBS.items() if job.get("done")]
+    completed.sort(key=lambda item: float(item[1].get("finished_at") or now))
+    for jid, _job in completed[:-JOB_MAX_COMPLETED]:
+        JOBS.pop(jid, None)
+
+
+def _active_job_count() -> int:
+    with JOBS_LOCK:
+        _prune_jobs_locked()
+        return sum(1 for job in JOBS.values() if not job.get("done"))
 
 
 def start_job(fn) -> str:
     jid = secrets.token_urlsafe(12)
+    now = time.time()
     with CLIENT_LOCK:
-        JOBS[jid] = {"done": False, "msg": "启动中…", "result": None, "error": None}
+        with JOBS_LOCK:
+            _prune_jobs_locked(now)
+            JOBS[jid] = {
+                "done": False, "msg": "启动中…", "result": None, "error": None,
+                "created_at": now, "updated_at": now,
+            }
+
+    def progress(message):
+        with JOBS_LOCK:
+            job = JOBS.get(jid)
+            if job and not job.get("done"):
+                job["msg"] = str(message)[:1500]
+                job["updated_at"] = time.time()
 
     def run():
+        result = None
+        error = None
         try:
-            JOBS[jid]["result"] = fn(lambda m: JOBS[jid].update(msg=m))
+            result = fn(progress)
         except Exception as e:  # noqa: BLE001
-            JOBS[jid]["error"] = str(e)[:1200]
+            error = str(e)[:1200]
         finally:
-            JOBS[jid]["done"] = True
+            finished_at = time.time()
+            with JOBS_LOCK:
+                job = JOBS.get(jid)
+                if job:
+                    job.update(
+                        result=result,
+                        error=error,
+                        done=True,
+                        finished_at=finished_at,
+                        updated_at=finished_at,
+                    )
+                    _prune_jobs_locked(finished_at)
 
     threading.Thread(target=run, daemon=True).start()
     return jid
@@ -421,14 +473,23 @@ def start_job(fn) -> str:
 
 @app.route("/api/job/<jid>")
 def api_job(jid):
-    job = JOBS.get(jid)
+    with JOBS_LOCK:
+        _prune_jobs_locked()
+        job = JOBS.get(jid)
+        if job and job.get("done"):
+            # 结果成功送达后不再常驻内存；重复轮询会明确提示已过期。
+            job = JOBS.pop(jid)
+        elif job:
+            job = dict(job)
     if not job:
         return fail("任务不存在或已过期")
     if not job["done"]:
         return jsonify({"ok": True, "done": False, "msg": job["msg"]})
     if job["error"]:
         return jsonify({"ok": False, "done": True, "msg": job["error"]})
-    return jsonify({"ok": True, "done": True, **job["result"]})
+    result = job.get("result")
+    payload = result if isinstance(result, dict) else {"result": result}
+    return jsonify({"ok": True, "done": True, **payload})
 
 
 @app.route("/api/rowcount", methods=["POST"])
@@ -955,13 +1016,13 @@ def api_sql_accumulate_diffs():
     name = core.safe_name((p.get("name") or "").strip() or "差异跟踪")
     new_diffs = p.get("diffs") or []
     time_slice = (p.get("time_slice") or "").strip()
-    if not new_diffs:
-        return fail("本轮没有可累入的差异")
+    pks_in_scope = p.get("pks_in_scope") or []
+    if not new_diffs and not pks_in_scope:
+        return fail("本轮没有差异，也没有可确认的主键范围")
     if not time_slice:
         return fail("请填写时间片标签，否则多轮累入时无法区分来源")
     archive_path = CLIENT.data_dir / f"{name}.xlsx"
-    r = core.accumulate_diffs(archive_path, new_diffs, time_slice,
-                              p.get("pks_in_scope") or [])
+    r = core.accumulate_diffs(archive_path, new_diffs, time_slice, pks_in_scope)
     return ok(
         file=archive_path.name,
         path=str(archive_path),

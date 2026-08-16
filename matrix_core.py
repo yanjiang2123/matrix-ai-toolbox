@@ -836,6 +836,7 @@ def accumulate_diffs(archive_path, new_diffs: list[dict],
 
     added = 0
     updated = 0
+    current_keys: set[tuple[str, str]] = set()
     for d in new_diffs:
         pk = str(d.get("pk", "") or "")
         col = str(d.get("col", "") or "")
@@ -845,11 +846,14 @@ def accumulate_diffs(archive_path, new_diffs: list[dict],
         if not pk and not col:
             continue
         key = (pk, col)
+        current_keys.add(key)
         if key in archive:
             row = archive[key]
             row[2], row[3], row[4], row[6] = a, b, kind, time_slice
             if row[7] == "已修复":
                 row[7] = "又出现"
+            elif row[7] != "又出现":
+                row[7] = "未修复"
             updated += 1
         else:
             archive[key] = [pk, col, a, b, kind, time_slice, time_slice,
@@ -860,23 +864,17 @@ def accumulate_diffs(archive_path, new_diffs: list[dict],
     fixed = 0
     kept_unfixed = 0
     if scope:
-        for (pk, col), row in archive.items():
-            if row[7] != "未修复":
+        for key, row in archive.items():
+            pk, _ = key
+            # 本轮仍然存在的差异不能被判定为已修复；只有本轮已复查、
+            # 但没有再次出现的活动差异才能完成状态转换。
+            if key in current_keys or row[7] not in {"未修复", "又出现"}:
                 continue
-            if col == "":
-                # 整行缺失条目：靠 pk 是否在范围内判断是否已修复
-                if pk in scope:
-                    row[7] = "已修复"
-                    fixed += 1
-                else:
-                    kept_unfixed += 1
+            if pk in scope:
+                row[7] = "已修复"
+                fixed += 1
             else:
-                # 字段差异条目：pk 在范围内且本轮没再出现 → 已修复
-                if pk in scope:
-                    row[7] = "已修复"
-                    fixed += 1
-                else:
-                    kept_unfixed += 1
+                kept_unfixed += 1
 
     write_xlsx(archive_path, {"差异跟踪": (ARCHIVE_HEADERS, list(archive.values()))})
     return {"added": added, "fixed": fixed,
@@ -1506,6 +1504,16 @@ def compare_excel(pa: Path, pb: Path, keys: list[str], opts: dict) -> dict:
 _HEADER_FILL = "2F5496"
 
 
+def safe_spreadsheet_value(value):
+    """把外部文本写成普通单元格，避免导出文件携带活动公式。"""
+    if not isinstance(value, str) or not value:
+        return value
+    probe = value.lstrip()
+    if probe[:1] in {"=", "+", "-", "@"} or value[:1] in {"\t", "\r", "\n"}:
+        return "'" + value
+    return value
+
+
 def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> Path:
     """写多 sheet Excel。sheets = {页名: (表头, 行)}，带表头样式与列宽自适应"""
     from openpyxl import Workbook
@@ -1517,7 +1525,7 @@ def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> P
     for title, (headers, rows) in sheets.items():
         ws = wb.create_sheet(title[:31])
         if headers:
-            ws.append(headers)
+            ws.append([safe_spreadsheet_value(v) for v in headers])
             fill = PatternFill("solid", fgColor=_HEADER_FILL)
             font = Font(name="微软雅黑", bold=True, color="FFFFFF", size=11)
             center = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -1525,7 +1533,7 @@ def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> P
                 c.fill, c.font, c.alignment = fill, font, center
             ws.freeze_panes = "A2"
         for r in rows:
-            ws.append(["" if v is None else v for v in r])
+            ws.append([safe_spreadsheet_value("" if v is None else v) for v in r])
         # 列宽：按内容估算，中文字符按 2 个宽度计
         ncol = len(headers) if headers else (max((len(r) for r in rows), default=0))
         for i in range(1, ncol + 1):
@@ -1543,9 +1551,9 @@ def write_csv(path: Path, headers: list[str], rows: list[list]) -> Path:
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         if headers:
-            w.writerow(headers)
+            w.writerow([safe_spreadsheet_value(v) for v in headers])
         for r in rows:
-            w.writerow(["" if v is None else v for v in r])
+            w.writerow([safe_spreadsheet_value("" if v is None else v) for v in r])
     return path
 
 

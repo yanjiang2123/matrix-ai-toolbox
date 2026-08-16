@@ -38,6 +38,7 @@ TIME_HINTS = ("date", "time", "_dt", "day", "month", "year",
 # 这些是系统时间，不是业务时间，排在候选末尾
 SYS_TIME = ("sys_load_time", "sys_update_time", "sys_create_time",
             "create_time", "update_time", "etl_time", "load_time")
+MAX_ARCHIVE_SCOPE_KEYS = 20_000  # 避免超大结果把后台任务响应撑到数十 MB
 
 JOIN_RE = re.compile(
     r"\b(LEFT\s+OUTER\s+JOIN|RIGHT\s+OUTER\s+JOIN|FULL\s+OUTER\s+JOIN|"
@@ -1902,6 +1903,19 @@ def compare_details(headers_a: list[str], rows_a: list[list],
         logs.append({"level": "low", "key": "", "column": "",
                      "reason": "主键已自动换算", "detail": n})
     verdict = _verdict(len(only_a), len(only_b), len(diffs), null_flip, matched)
+    # 页面只回传有限数量的差异明细。若某主键还有被截断的差异，就不能把它
+    # 放进档案复核范围，否则历史条目会因为“本轮未回传”而被误判为已修复。
+    omitted_pks = {
+        d["key"] for d in diffs[2000:]
+    } | {
+        "+".join(k) for k in only_a[500:]
+    } | {
+        "+".join(k) for k in only_b[500:]
+    }
+    all_pks = ["+".join(k) for k in dict.fromkeys([*ma, *mb])]
+    safe_pks = [pk for pk in all_pks if pk not in omitted_pks]
+    pks_in_scope = safe_pks[:MAX_ARCHIVE_SCOPE_KEYS]
+    archive_scope_truncated = bool(omitted_pks) or len(safe_pks) > len(pks_in_scope)
     return {
         "stats": {"rows_a": len(rows_a), "rows_b": len(rows_b),
                   "keys": keys, "resolved_keys": {"a": keys_a, "b": keys_b},
@@ -1912,6 +1926,8 @@ def compare_details(headers_a: list[str], rows_a: list[list],
         "key_notes": key_notes,
         "only_a": ["+".join(k) for k in only_a[:500]],
         "only_b": ["+".join(k) for k in only_b[:500]],
+        "pks_in_scope": pks_in_scope,
+        "archive_scope_truncated": archive_scope_truncated,
         "diffs": diffs[:2000], "diffs_total": len(diffs),
         "logs": logs[:1000], "logs_total": len(logs),
         "verdict": verdict,
@@ -1962,6 +1978,8 @@ def _one_side_empty(headers_a: list[str], rows_a: list[list],
                   "cmp_cols": 0, "diff_cells": 0, "null_flip": 0},
         "only_a": ks[:500] if side == "A" else [],
         "only_b": ks[:500] if side == "B" else [],
+        "pks_in_scope": list(dict.fromkeys(ks[:500]))[:MAX_ARCHIVE_SCOPE_KEYS],
+        "archive_scope_truncated": len(ks) > 500,
         "diffs": [], "diffs_total": 0,
         "logs": logs[:1000], "logs_total": len(logs),
         "verdict": {"level": lv, "text": text, "next": nxt},
