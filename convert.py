@@ -18,7 +18,7 @@ import re
 import subprocess
 import sys
 from datetime import date, datetime, time
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from pathlib import Path
 
 import matrix_core as core
@@ -77,12 +77,15 @@ def parse_ddl(ddl: str) -> dict:
             continue
         name = next(v for v in cm.groups()[:3] if v is not None)
         ctype = cm.group(4).lower()
-        scale_match = re.match(r"\s*\(\s*\d+\s*,\s*(\d+)\s*\)", line[cm.end():])
+        size_match = re.match(
+            r"\s*\(\s*(\d+)(?:\s*,\s*(\d+))?\s*\)", line[cm.end():])
         cols.append({
             "name": name, "type": ctype,
             "quoted": _needs_quote(ctype),
             "nullable": not re.search(r"\bNOT\s+NULL\b", line, re.I),
-            "scale": int(scale_match.group(1)) if scale_match else None,
+            "precision": int(size_match.group(1)) if size_match else None,
+            "scale": (int(size_match.group(2))
+                      if size_match and size_match.group(2) is not None else None),
         })
     if not cols:
         raise ValueError("建表语句里没解析出任何字段")
@@ -132,6 +135,11 @@ def _sql_literal(value, col: dict) -> str:
         return "NULL"
     if isinstance(value, bool):
         return "1" if value else "0"
+    if isinstance(value, float) and abs(value) >= 1e15:
+        raise ValueError(
+            f"字段 `{col.get('name') or ''}` 是超过 15 位的 Excel 浮点数 {value!r}；"
+            "Excel 可能已丢失末位精度，请把该列改为文本后重新导入"
+        )
     ctype = str(col.get("type") or "").lower()
     if isinstance(value, datetime):
         if ctype == "date":
@@ -146,15 +154,41 @@ def _sql_literal(value, col: dict) -> str:
         s = value.strftime("%H:%M:%S")
     else:
         s = str(value).strip()
-    if s.upper() in ("NULL", "\\N"):
+    # 空单元格已经在函数开头转成 SQL NULL。文本列里的真实字符串
+    # "NULL" 必须原样保留，否则导入后无法区分文字与数据库空值。
+    textual = any(ctype.startswith(t) for t in
+                  ("char", "varchar", "string", "text", "json", "binary", "blob"))
+    if s == "\\N" or (s.upper() == "NULL" and not textual):
         return "NULL"
     if not col["quoted"]:
+        if ctype in ("boolean", "bool") and s.lower() in ("true", "false"):
+            return "1" if s.lower() == "true" else "0"
         try:
-            number = Decimal(str(value))
+            number_text = str(value).strip()
+            if re.fullmatch(r"[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?", number_text):
+                number_text = number_text.replace(",", "")
+            number = Decimal(number_text)
+            if not number.is_finite():
+                raise InvalidOperation
             scale = col.get("scale")
             if scale is not None:
                 quantum = Decimal(1).scaleb(-int(scale))
-                return format(number.quantize(quantum), f".{int(scale)}f")
+                integer_digits = max(1, number.adjusted() + 1)
+                with localcontext() as ctx:
+                    ctx.prec = max(28, integer_digits + int(scale) + 4,
+                                   len(number.as_tuple().digits) + int(scale) + 4)
+                    quantized = number.quantize(quantum)
+                precision = col.get("precision")
+                if precision is not None:
+                    integer_limit = int(precision) - int(scale)
+                    quantized_integer_digits = (max(1, quantized.adjusted() + 1)
+                                                if quantized else 1)
+                    if quantized_integer_digits > integer_limit:
+                        raise ValueError(
+                            f"数值字段 `{col.get('name') or ''}` 的值 {s!r} "
+                            f"超出 DECIMAL({precision},{scale}) 范围"
+                        )
+                return format(quantized, f".{int(scale)}f")
             # 无固定小数位的数值列：Excel 常把整数读成 100.0。
             if isinstance(value, float) and value.is_integer():
                 return str(int(value))
@@ -162,8 +196,12 @@ def _sql_literal(value, col: dict) -> str:
                 # openpyxl 可能返回 6172.799999999999 这类二进制浮点尾差。
                 return format(value, ".15g")
             return format(number, "f")
-        except (InvalidOperation, ValueError, TypeError):
-            return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
+        except ValueError:
+            raise
+        except (InvalidOperation, TypeError) as exc:
+            raise ValueError(
+                f"数值字段 `{col.get('name') or ''}` 收到非数值内容 {s!r}"
+            ) from exc
     if isinstance(value, float) and value.is_integer():
         s = str(int(value))
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
@@ -183,14 +221,26 @@ def excel_to_insert(xlsx: Path, ddl: str, batch: int = 500,
     col_by_name = {c["name"].lower(): c for c in meta_ddl["columns"]}
 
     used, unmatched_header, positions = [], [], []
+    matched_names: set[str] = set()
+    duplicate_targets: list[str] = []
     for idx, h in enumerate(headers):
         key = str(h).strip().lower()
         c = col_by_name.get(key)
         if c:
+            target_key = c["name"].lower()
+            if target_key in matched_names:
+                duplicate_targets.append(c["name"])
+                continue
+            matched_names.add(target_key)
             used.append(c)
             positions.append(idx)
         else:
             unmatched_header.append(h)
+    if duplicate_targets:
+        raise ValueError(
+            "Excel 存在重复表头，会让 INSERT 重复写入同一目标字段："
+            + "、".join(dict.fromkeys(duplicate_targets))
+            + "。请先把表头改成唯一名称后重试")
     if not used:
         raise ValueError(f"Excel 表头与建表语句字段没有任何匹配。\n"
                          f"Excel 表头: {headers[:10]}\n"
@@ -201,14 +251,17 @@ def excel_to_insert(xlsx: Path, ddl: str, batch: int = 500,
 
     col_list = ", ".join(f"`{c['name']}`" for c in used)
     statements, values_buf, skipped = [], [], 0
-    for r in rows:
+    for row_number, r in enumerate(rows, start=int(meta.get("header_row") or 1) + 1):
         if all(v is None or str(v).strip() == "" for v in r):
             skipped += 1
             continue
         vals = []
         for c, pos in zip(used, positions):
             v = r[pos] if pos < len(r) else None
-            vals.append(_sql_literal(v, c))
+            try:
+                vals.append(_sql_literal(v, c))
+            except ValueError as exc:
+                raise ValueError(f"Excel 第 {row_number} 行：{exc}") from exc
         values_buf.append("(" + ", ".join(vals) + ")")
         if len(values_buf) >= batch:
             statements.append(_wrap_insert(meta_ddl["table"], col_list, values_buf))
@@ -260,6 +313,12 @@ CJK_FONTS = (
     # 常见 Linux 桌面/容器
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf",
+)
+
+EMOJI_FONTS = (
+    "C:/Windows/Fonts/seguiemj.ttf",
+    "/System/Library/Fonts/Apple Color Emoji.ttc",
+    "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
 )
 
 
@@ -339,7 +398,7 @@ def _content_weight(value, header: str = "") -> int:
 
 def _pdf_wrap(pdf, text: str, width: float, max_lines: int) -> tuple[list[str], bool]:
     """按实际字体宽度换行；返回 (行, 是否因安全上限被截断)。"""
-    text = str(text).replace("\r", "")
+    text = str(text).replace("\r", "").replace("\t", "    ")
     if not text:
         return [""], False
     limit = max(width - 2.0, 1.0)
@@ -388,9 +447,30 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
         pdf.add_font("cjk", "", font_path, uni=True)
     else:
         pdf.add_font("cjk", "", font_path)
+    emoji_font = ""
+    if hasattr(pdf, "set_fallback_fonts"):
+        for candidate in EMOJI_FONTS:
+            if not Path(candidate).exists():
+                continue
+            try:
+                pdf.add_font("emoji", "", candidate)
+                pdf.set_fallback_fonts(["emoji"])
+                emoji_font = Path(candidate).name
+                break
+            except Exception:  # optional enhancement; CJK output must still work
+                continue
     pdf.set_font("cjk", size=8)
     pdf.set_draw_color(190, 198, 210)
     pdf.set_line_width(0.2)
+
+    def write_cell(width, height, text, align="L", next_line=False):
+        if needs_uni:  # legacy PyFPDF compatibility
+            pdf.cell(width, height, text, 0, 1 if next_line else 0, align)
+        else:
+            from fpdf.enums import XPos, YPos
+            pdf.cell(width, height, text, border=0, align=align,
+                     new_x=XPos.LMARGIN if next_line else XPos.RIGHT,
+                     new_y=YPos.NEXT if next_line else YPos.TOP)
 
     ncol = max(len(headers), max((len(r) for r in rows), default=0)) or 1
     avail = (297 if landscape else 210) - 16
@@ -411,21 +491,34 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
         if any(k in header_text for k in ("电话", "手机", "联系方式")):
             weight = max(weight, 14)
         weights.append(weight)
-    total_weight = sum(weights) or 1
-    widths = [max(avail * w / total_weight, 8) for w in weights]
-    scale = avail / sum(widths)
-    widths = [w * scale for w in widths]
+    # A4 横向硬塞几十列会把每列压到几个毫米，最终逐字换行、每页只有
+    # 三五行且大量截断。宽表改为“列组”分页，并在后续列组重复首列，
+    # 让主键/编号始终可见，换取真正可读的输出。
+    max_band_cols = 12 if landscape else 7
+    if ncol <= max_band_cols:
+        bands = [list(range(ncol))]
+    else:
+        payload_size = max_band_cols - 1
+        bands = [[0, *range(start, min(start + payload_size, ncol))]
+                 for start in range(1, ncol, payload_size)]
+
+    def widths_for(indices):
+        selected = [weights[i] for i in indices]
+        total_weight = sum(selected) or 1
+        widths = [max(avail * w / total_weight, 12) for w in selected]
+        scale = avail / sum(widths)
+        return [w * scale for w in widths]
 
     line_h = 4.2
     clipped_cells = 0
     clipped_headers = 0
 
-    def layout(values, header_row=False):
+    def layout(values, indices, widths, header_row=False):
         nonlocal clipped_cells, clipped_headers
         wrapped = []
-        for i, width in enumerate(widths):
-            value = values[i] if i < len(values) else ""
-            column_header = headers[i] if i < len(headers) else ""
+        for original_i, width in zip(indices, widths):
+            value = values[original_i] if original_i < len(values) else ""
+            column_header = headers[original_i] if original_i < len(headers) else ""
             text = _display_value(value, column_header)
             lines, clipped = _pdf_wrap(pdf, text, width, 5 if header_row else 10)
             wrapped.append(lines)
@@ -437,9 +530,8 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
         height = max(6.2, max(len(lines) for lines in wrapped) * line_h + 2.0)
         return wrapped, height
 
-    header_layout = layout(headers, True) if headers else None
-
-    def draw_layout(wrapped, height, header_row=False, alternate=False):
+    def draw_layout(wrapped, height, indices, widths,
+                    header_row=False, alternate=False):
         start_x, y = pdf.l_margin, pdf.get_y()
         if header_row:
             pdf.set_fill_color(47, 84, 150)
@@ -450,48 +542,64 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
                                min(color + (3 if color < 255 else 0), 255))
             pdf.set_text_color(32, 39, 51)
         x = start_x
-        for i, width in enumerate(widths):
+        for local_i, (original_i, width) in enumerate(zip(indices, widths)):
             pdf.rect(x, y, width, height, "DF")
-            lines = wrapped[i]
+            lines = wrapped[local_i]
             text_y = y + max((height - len(lines) * line_h) / 2, 0.8)
-            value = headers[i] if header_row and i < len(headers) else ""
             align = "C" if header_row else "L"
-            if not header_row and i < len(headers):
-                h = str(headers[i])
+            if not header_row and original_i < len(headers):
+                h = str(headers[original_i])
                 if any(k in h for k in ("日期", "时间", "状态", "比例", "百分")):
                     align = "C"
             for li, text in enumerate(lines):
                 pdf.set_xy(x + 1, text_y + li * line_h)
-                pdf.cell(max(width - 2, 0.1), line_h, text, 0, 0, align)
+                write_cell(max(width - 2, 0.1), line_h, text, align)
             x += width
         pdf.set_xy(start_x, y + height)
         pdf.set_text_color(32, 39, 51)
 
-    def add_page(first=False):
+    def add_page(indices, widths, header_layout, band_no, first=False):
         pdf.add_page()
         if first and title:
             pdf.set_font("cjk", size=14)
             title_lines, _ = _pdf_wrap(pdf, title, avail, 2)
             for line in title_lines:
-                pdf.cell(avail, 7, line, 0, 1, "C")
+                write_cell(avail, 7, line, "C", next_line=True)
             pdf.ln(2)
             pdf.set_font("cjk", size=8)
+        if len(bands) > 1:
+            names = [str(headers[i]) if i < len(headers) else f"列{i + 1}"
+                     for i in indices]
+            label = f"列组 {band_no}/{len(bands)}：" + " / ".join(names)
+            label_lines, _ = _pdf_wrap(pdf, label, avail, 2)
+            for line in label_lines:
+                write_cell(avail, 5, line, "L", next_line=True)
+            pdf.ln(1)
         if header_layout:
-            draw_layout(*header_layout, header_row=True)
+            draw_layout(*header_layout, indices, widths, header_row=True)
 
-    add_page(first=True)
-    alternate = False
-    for row in rows:
-        row_layout = layout(row)
-        if pdf.get_y() + row_layout[1] > pdf.h - pdf.b_margin:
-            add_page()
-        draw_layout(*row_layout, alternate=alternate)
-        alternate = not alternate
+    first_page = True
+    for band_no, indices in enumerate(bands, 1):
+        widths = widths_for(indices)
+        header_layout = layout(headers, indices, widths, True) if headers else None
+        add_page(indices, widths, header_layout, band_no, first=first_page)
+        first_page = False
+        alternate = False
+        for row in rows:
+            row_layout = layout(row, indices, widths)
+            if pdf.get_y() + row_layout[1] > pdf.h - pdf.b_margin:
+                add_page(indices, widths, header_layout, band_no)
+            draw_layout(*row_layout, indices, widths, alternate=alternate)
+            alternate = not alternate
 
     warnings = list(meta["warnings"])
     if truncated:
         warnings.append(
             f"源数据 {total_rows} 行，只输出前 {max_rows} 行；如需完整内容请调高行数上限。")
+    if len(bands) > 1:
+        warnings.append(
+            f"源表有 {ncol} 列，A4 无法在单页保持可读；已拆成 {len(bands)} 个列组，"
+            "后续列组重复首列用于对齐。")
     if clipped_cells:
         warnings.append(
             f"有 {clipped_cells} 个超长单元格为保证分页最多显示 10 行，末尾已用省略号标记。")
@@ -505,11 +613,13 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
             "cols": ncol, "truncated": truncated,
             "size": f"{out.stat().st_size / 1024:.0f} KB",
             "font": Path(font_path).name,
+            "emoji_font": emoji_font,
             "sheet": meta["sheet"],
             "sheets": [s["name"] for s in meta["sheets"]],
             "total_rows": total_rows, "warnings": warnings,
             "clipped_cells": clipped_cells,
-            "clipped_headers": clipped_headers}
+            "clipped_headers": clipped_headers,
+            "column_bands": len(bands)}
 
 
 def _fit(pdf, text: str, width: float, cache: dict | None = None) -> str:
@@ -600,16 +710,6 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
         h.paragraph_format.space_after = Pt(8)
 
     ncol = max(len(headers), max((len(r) for r in rows), default=0)) or 1
-    table = doc.add_table(rows=1 if headers else 0, cols=ncol)
-    table.style = "Table Grid"
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    table.autofit = False
-
-    tbl_pr = table._tbl.tblPr
-    layout = OxmlElement("w:tblLayout")
-    layout.set(qn("w:type"), "fixed")
-    tbl_pr.append(layout)
-
     available_width = int(sec.page_width - sec.left_margin - sec.right_margin)
     weights = []
     for i in range(ncol):
@@ -628,9 +728,22 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
         if any(k in header_text for k in ("电话", "手机", "联系方式")):
             weight = max(weight, 14)
         weights.append(weight)
-    min_weight = 5 if ncol <= 12 else 3
-    weights = [max(w, min_weight) for w in weights]
-    word_widths = [int(available_width * w / (sum(weights) or 1)) for w in weights]
+    weights = [max(w, 5) for w in weights]
+
+    # 与 PDF 一样，不能把几十列硬塞进一张 A4 页面。宽表按列组输出，
+    # 后续列组重复首列，让编号/主键始终可用于横向对齐。
+    max_band_cols = 12 if landscape else 7
+    if ncol <= max_band_cols:
+        bands = [list(range(ncol))]
+    else:
+        payload_size = max_band_cols - 1
+        bands = [[0, *range(start, min(start + payload_size, ncol))]
+                 for start in range(1, ncol, payload_size)]
+
+    def widths_for(indices):
+        selected = [weights[i] for i in indices]
+        total_weight = sum(selected) or 1
+        return [int(available_width * w / total_weight) for w in selected]
 
     def set_cell_width(cell, width):
         cell.width = width
@@ -664,63 +777,96 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
         flag.set(qn("w:val"), "true")
         tr_pr.append(flag)
 
-    body_size = 8.5 if ncol <= 8 else (7.5 if ncol <= 12 else 6.5)
-
     def shade(cell, color: str):
         el = OxmlElement("w:shd")
         el.set(qn("w:fill"), color)
         cell._tc.get_or_add_tcPr().append(el)
 
-    if headers:
-        header_row = table.rows[0]
-        repeat_header(header_row)
-        keep_row_together(header_row)
-        hdr = header_row.cells
-        for i in range(ncol):
-            txt = str(headers[i]) if i < len(headers) else ""
-            cell = hdr[i]
-            cell.text = txt
-            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-            set_cell_width(cell, word_widths[i])
-            set_cell_margins(cell, top=70, bottom=70)
-            shade(cell, "2F5496")
-            for p in cell.paragraphs:
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                p.paragraph_format.space_before = Pt(0)
-                p.paragraph_format.space_after = Pt(0)
-                for r in p.runs:
-                    style_run(r, 9, bold=True, color=RGBColor(255, 255, 255))
+    for band_no, indices in enumerate(bands, 1):
+        if band_no > 1:
+            doc.add_page_break()
+        if len(bands) > 1:
+            names = [str(headers[i]) if i < len(headers) else f"列{i + 1}"
+                     for i in indices]
+            label = doc.add_paragraph(
+                f"列组 {band_no}/{len(bands)}：" + " / ".join(names))
+            label.paragraph_format.space_before = Pt(0)
+            label.paragraph_format.space_after = Pt(5)
+            label.paragraph_format.keep_with_next = True
+            for run in label.runs:
+                style_run(run, 9, bold=True, color=RGBColor(47, 84, 150))
 
-    for ri, r in enumerate(rows):
-        row = table.add_row()
-        keep_row_together(row)
-        cells = row.cells
-        for i in range(ncol):
-            v = r[i] if i < len(r) else None
-            header = str(headers[i]) if i < len(headers) else ""
-            cells[i].text = _display_value(v, header)
-            cells[i].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-            set_cell_width(cells[i], word_widths[i])
-            set_cell_margins(cells[i])
-            if ri % 2:
-                shade(cells[i], "F5F6F8")
-            for p in cells[i].paragraphs:
-                if isinstance(v, (int, float)) and not isinstance(v, bool):
-                    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                elif any(k in header for k in ("日期", "时间", "状态", "比例", "百分")):
+        table = doc.add_table(rows=1 if headers else 0, cols=len(indices))
+        table.style = "Table Grid"
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.autofit = False
+        tbl_pr = table._tbl.tblPr
+        layout = OxmlElement("w:tblLayout")
+        layout.set(qn("w:type"), "fixed")
+        tbl_pr.append(layout)
+
+        word_widths = widths_for(indices)
+        for local_i, width in enumerate(word_widths):
+            table.columns[local_i].width = width
+        body_size = 8.5 if len(indices) <= 8 else 7.5
+
+        if headers:
+            header_row = table.rows[0]
+            repeat_header(header_row)
+            keep_row_together(header_row)
+            for local_i, original_i in enumerate(indices):
+                txt = str(headers[original_i]) if original_i < len(headers) else ""
+                cell = header_row.cells[local_i]
+                cell.text = txt
+                cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                set_cell_width(cell, word_widths[local_i])
+                set_cell_margins(cell, top=70, bottom=70)
+                shade(cell, "2F5496")
+                for p in cell.paragraphs:
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                else:
-                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                p.paragraph_format.space_before = Pt(0)
-                p.paragraph_format.space_after = Pt(0)
-                p.paragraph_format.line_spacing = 1
-                for run in p.runs:
-                    style_run(run, body_size, color=RGBColor(32, 39, 51))
+                    p.paragraph_format.space_before = Pt(0)
+                    p.paragraph_format.space_after = Pt(0)
+                    for run in p.runs:
+                        style_run(run, 9, bold=True,
+                                  color=RGBColor(255, 255, 255))
+
+        for ri, source_row in enumerate(rows):
+            row = table.add_row()
+            keep_row_together(row)
+            for local_i, original_i in enumerate(indices):
+                value = (source_row[original_i]
+                         if original_i < len(source_row) else None)
+                header = (str(headers[original_i])
+                          if original_i < len(headers) else "")
+                cell = row.cells[local_i]
+                cell.text = _display_value(value, header)
+                cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                set_cell_width(cell, word_widths[local_i])
+                set_cell_margins(cell)
+                if ri % 2:
+                    shade(cell, "F5F6F8")
+                for p in cell.paragraphs:
+                    if isinstance(value, (int, float)) and not isinstance(value, bool):
+                        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                    elif any(k in header for k in
+                             ("日期", "时间", "状态", "比例", "百分")):
+                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    else:
+                        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    p.paragraph_format.space_before = Pt(0)
+                    p.paragraph_format.space_after = Pt(0)
+                    p.paragraph_format.line_spacing = 1
+                    for run in p.runs:
+                        style_run(run, body_size, color=RGBColor(32, 39, 51))
 
     warnings = list(meta["warnings"])
     if truncated:
         warnings.append(
             f"源数据 {total_rows} 行，只输出前 {max_rows} 行；如需完整内容请调高行数上限。")
+    if len(bands) > 1:
+        warnings.append(
+            f"源表有 {ncol} 列，A4 无法在单页保持可读；已拆成 {len(bands)} 个列组，"
+            "后续列组重复首列用于对齐。")
 
     out.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out))
@@ -729,7 +875,8 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
             "size": f"{out.stat().st_size / 1024:.0f} KB",
             "sheet": meta["sheet"],
             "sheets": [s["name"] for s in meta["sheets"]],
-            "total_rows": total_rows, "warnings": warnings}
+            "total_rows": total_rows, "warnings": warnings,
+            "column_bands": len(bands)}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -808,7 +955,9 @@ foreach ($line in $result.Lines) {
   foreach ($word in $words) {
     $rect = $word.BoundingRect
     $gap = [double]$rect.X - $right
-    $joinGap = [Math]::Max(6.0, [Math]::Min([double]$height, [double]$rect.Height) * 0.65)
+    # 中文 OCR 偶尔把同一表头拆成单字/短词；允许约 1.35 个字高的词间距，
+    # 同时仍远小于常见单元格之间的留白。
+    $joinGap = [Math]::Max(6.0, [Math]::Min([double]$height, [double]$rect.Height) * 1.35)
     if ($group.Count -gt 0 -and $gap -gt $joinGap) {
       $first = $group[0].BoundingRect
       $last = $group[-1].BoundingRect
@@ -935,6 +1084,13 @@ def blocks_to_rows(blocks: list[dict], row_tol: float = 0.6,
     """
     if not blocks:
         return []
+
+    def clean_text(value) -> str:
+        text = str(value or "").strip()
+        # Windows OCR 的 Word 集合常输出“交 易 日 期”。中文字符间的空格
+        # 不是业务内容，去掉后表头与字段名才能稳定匹配；英文词间空格保留。
+        return re.sub(r"(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])", "", text)
+
     items = sorted(blocks, key=lambda b: (b["y"], b["x"]))
 
     # ── 聚行 ──
@@ -963,14 +1119,15 @@ def blocks_to_rows(blocks: list[dict], row_tol: float = 0.6,
         else:
             anchors[-1] = (anchors[-1] + x) / 2
     if not anchors:
-        return [[b["text"] for b in ln] for ln in lines]
+        return [[clean_text(b["text"]) for b in ln] for ln in lines]
 
     rows: list[list[str]] = []
     for ln in lines:
         cells = [""] * len(anchors)
         for b in ln:
             ci = min(range(len(anchors)), key=lambda i: abs(anchors[i] - b["x"]))
-            cells[ci] = (cells[ci] + " " + b["text"]).strip() if cells[ci] else b["text"]
+            text = clean_text(b["text"])
+            cells[ci] = (cells[ci] + " " + text).strip() if cells[ci] else text
         rows.append(cells)
 
     if not rows:
@@ -991,6 +1148,8 @@ def image_to_rows(image: Path, row_tol: float = 0.6, col_gap: float = 0.025,
                   min_fill: float = 0.15) -> dict:
     """图片 → 表格二维数组 + 识别质量信息"""
     blocks = ocr_blocks(image)
+    if not blocks:
+        raise ValueError("图片中没有识别到文字；请换用清晰、正向且裁剪到表格区域的截图")
     rows = blocks_to_rows(blocks, row_tol, col_gap, min_fill)
     confidence_available = bool(blocks) and all(
         isinstance(b.get("conf"), (int, float)) for b in blocks)
@@ -1000,8 +1159,12 @@ def image_to_rows(image: Path, row_tol: float = 0.6, col_gap: float = 0.025,
     warnings = []
     if not confidence_available and blocks:
         warnings.append("当前系统 OCR 不提供逐块置信度，生成 Excel 前请逐格人工核对")
-    if len(low) > 3:
+    if low:
         warnings.append("部分文字识别置信度偏低，请重点核对相似字符 f/t、l/1、0/O")
+    if len(rows) <= 1:
+        warnings.append("只识别到 1 行，无法可靠判断表格行结构，请核对是否漏行或把表头拆列")
+    if rows and len(rows[0]) <= 1:
+        warnings.append("只识别到 1 列，图片可能过小、模糊或有旋转，请更换清晰正向截图")
     return {
         "rows": rows,
         "block_count": len(blocks),

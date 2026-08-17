@@ -1190,11 +1190,20 @@ def compare_one_table(client: MatrixClient, side_a: dict, side_b: dict,
                        "定位到底是哪几条、哪个字段不一样")
         return out
 
-    common = {c.lower() for c in cols["common"]}
-    missing = [k for k in keys if k.split(".")[-1].lower() not in common]
+    common = {c.lower(): c for c in cols["common"]}
+    resolved_keys = []
+    missing = []
+    for key in keys:
+        bare = key.replace("`", "").split(".")[-1].strip().lower()
+        hit = common.get(bare)
+        if hit:
+            resolved_keys.append(hit)
+        else:
+            missing.append(key)
     if missing:
         raise RuntimeError(f"主键字段在两边不都存在：{missing}。"
                            f"两边共有字段 {len(common)} 个，请从中挑主键")
+    keys = list(dict.fromkeys(resolved_keys))
     # 只取两边都有的字段：一边缺的字段没法比，带上只会让差异列表全是噪音
     pick = [c for c in cols["common"]]
     note(f"取明细：{ta}（按主键排序前 {limit} 行）")
@@ -1205,10 +1214,13 @@ def compare_one_table(client: MatrixClient, side_a: dict, side_b: dict,
                                 side_b["table"], pick, keys, where_b, limit)
     note("按主键对齐比明细…")
     out["data"] = st.compare_details(ha, ra, hb, rb, keys)
-    out["data"]["sampled"] = (na > limit or nb > limit)
+    sampled = na > limit or nb > limit
+    out["data"]["sampled"] = sampled
+    if sampled:
+        st.qualify_sample_result(out["data"], limit)
     out["note"] = (f"明细按主键排序各取前 {limit} 行比对"
-                   + ("；两边行数都超过取数上限，这只是抽样结论，"
-                      "要比全量请加 WHERE 条件分段跑" if na > limit or nb > limit else ""))
+                   + ("；至少一边行数超过取数上限，这只是抽样结论，"
+                       "要比全量请加 WHERE 条件分段跑" if na > limit or nb > limit else ""))
     return out
 
 
@@ -1219,6 +1231,30 @@ def _grid_size(grid: list[list]) -> tuple[int, int]:
     rows = len(grid)
     cols = max((len(r) for r in grid), default=0)
     return rows, cols
+
+
+def _xlsx_has_formula(path: Path) -> bool:
+    """Inspect worksheet XML cheaply before paying for a second workbook load."""
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(path) as archive:
+            for name in archive.namelist():
+                if not (name.startswith("xl/worksheets/") and name.endswith(".xml")):
+                    continue
+                with archive.open(name) as stream:
+                    carry = b""
+                    while True:
+                        chunk = stream.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        probe = carry + chunk
+                        if b"<f" in probe:
+                            return True
+                        carry = probe[-2:]
+    except (OSError, zipfile.BadZipFile):
+        return False
+    return False
 
 
 def _load_grid(path: Path, sheet: str | int | None = None,
@@ -1369,12 +1405,12 @@ def read_sheet_meta(path: Path, sheet: str | int | None = None
             f"该文件有 {len(names)} 个工作表，已选中「{title}」。"
             f"如需其它表请手动指定")
 
-    # 公式回退：只在空洞多到影响结果时才为此再加载一遍
+    # 公式回退：先扫 worksheet XML；确实含公式时才再加载一遍。
+    # 不能再按“空洞超过 10 个”判断——单个无缓存公式也不能静默变成 NULL。
     if grid:
         holes = [(i, j) for i, r in enumerate(grid) for j, v in enumerate(r)
                  if v is None]
-        cells = max(nrow * ncol, 1)
-        if holes and len(holes) > 10 and len(holes) / cells > 0.03:
+        if holes and _xlsx_has_formula(path):
             raw, _, _, _ = _load_grid(path, sheet, data_only=False)
             filled = 0
             for i, j in holes:
@@ -1550,6 +1586,12 @@ def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> P
             "amount", "price", "cost", "revenue", "balance",
         ))
 
+    def significant_digits(text: str) -> int:
+        """估算十进制文本的有效数字数；Excel 数值只能可靠保留约 15 位。"""
+        mantissa = re.split(r"[eE]", str(text).replace(",", ""), maxsplit=1)[0]
+        digits = mantissa.lstrip("+-").replace(".", "").lstrip("0")
+        return len(digits) or 1
+
     def coerce_value(value, header):
         """返回 (Excel 值, 数字格式)；ID 与超长数字始终保留为文本。"""
         if value is None:
@@ -1571,15 +1613,19 @@ def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> P
         probe = raw.strip()
         if not probe:
             return "", None
-        if identifier_header(header) or re.fullmatch(r"[+-]?0\d+", probe):
+        if identifier_header(header):
             return safe_spreadsheet_value(raw), "@"
+        if re.fullmatch(r"[+-]?0\d+", probe):
+            return raw, "@"
         # Excel 只有约 15 位有效数字；更长的数字即使未标成 ID 也不能转成数值。
         digits_only = probe.lstrip("+-").replace(",", "")
         if digits_only.isdigit() and len(digits_only) > 15:
-            return safe_spreadsheet_value(raw), "@"
+            return raw, "@"
 
         percent = re.fullmatch(r"([+-]?(?:\d+(?:\.\d*)?|\.\d+))%", probe)
         if percent:
+            if significant_digits(percent.group(1)) > 15:
+                return raw, "@"
             decimals = len(percent.group(1).partition(".")[2])
             fmt = "0%" if not decimals else "0." + "0" * min(decimals, 4) + "%"
             return float(percent.group(1)) / 100, fmt
@@ -1608,10 +1654,14 @@ def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> P
         )
         if numeric:
             clean = numeric_probe.replace(",", "")
+            if significant_digits(clean) > 15:
+                return raw, "@"
             decimals = len(clean.partition(".")[2].split("e")[0].split("E")[0])
             number = float(clean) if any(ch in clean.lower() for ch in (".", "e")) else int(clean)
             if currency:
                 return number, f'"{currency}"#,##0.00'
+            if "e" in clean.lower():
+                return number, "0E+00" if not decimals else "0." + "0" * min(decimals, 8) + "E+00"
             if amount_header(header):
                 return number, "#,##0.00"
             return number, "#,##0" if not decimals else "#,##0." + "0" * min(decimals, 8)

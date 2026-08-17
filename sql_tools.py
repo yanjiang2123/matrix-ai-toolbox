@@ -17,8 +17,12 @@ parser 频繁报错，这里用括号配对 + 正则做到「够用且不会崩�
 
 from __future__ import annotations
 
+import json
 import re
-from collections import OrderedDict
+from collections import Counter, OrderedDict
+from decimal import Decimal, InvalidOperation
+
+from excel_diff import match_group
 
 # ── 通用数仓分层：库名前缀 → (层级, 出问题时该追查什么) ──────────
 LAYERS = OrderedDict([
@@ -69,7 +73,9 @@ def strip_comments(sql: str) -> str:
                     break
                 i += 1
             continue
-        if sql.startswith("--", i):
+        if (sql.startswith("--", i)
+                and (i + 2 >= n or ord(sql[i + 2]) <= 32
+                     or ord(sql[i + 2]) == 127)):
             while i < n and sql[i] != "\n":
                 i += 1
             continue
@@ -1308,11 +1314,15 @@ def _as_lo(s: str) -> str:
 
 
 def _as_hi(s: str) -> str:
-    """把边界补成结束时刻：只给日期就补 23:59:59"""
+    """把包含式上界补到该秒末尾，避免漏掉 23:59:59.xxxxxx。"""
     s = str(s).strip()
-    if len(s) > 10:
-        return s if len(s) > 16 else f"{s}:59"
-    return f"{s} 23:59:59"
+    if len(s) <= 10:
+        return f"{s} 23:59:59.999999"
+    if len(s) <= 16:
+        return f"{s}:59.999999"
+    if len(s) == 19:
+        return f"{s}.999999"
+    return s
 
 
 def build_count_sql(sql: str) -> str:
@@ -1474,11 +1484,11 @@ def _seg_end(seg: str, grain_name: str) -> str:
     """
     s = str(seg).strip()
     if grain_name == "天" or len(s) <= 10:
-        return f"{s[:10]} 23:59:59"
+        return f"{s[:10]} 23:59:59.999999"
     if grain_name == "小时":
-        return f"{s[:13]}:59:59"
+        return f"{s[:13]}:59:59.999999"
     if grain_name == "分钟":
-        return f"{s[:16]}:59"
+        return f"{s[:16]}:59.999999"
     return s
 
 
@@ -1532,7 +1542,7 @@ def _enumerate_segments(start: str, end: str, grain: int = 0) -> list[tuple]:
             s = f"{s} {tail}"
         if len(s) <= 16:
             s = f"{s}:00"
-        return dt.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+        return dt.datetime.fromisoformat(s)
 
     lo, hi = parse(start, "00:00:00"), parse(end, "23:59:59")
     step = [dt.timedelta(days=1), dt.timedelta(hours=1), dt.timedelta(minutes=1)][
@@ -1717,6 +1727,29 @@ def fetch_full_scan(run_sql, sql: str, time_col: str, plan: dict,
     }
 
 
+def assess_full_scan(plan: dict, fetched: dict, side: str = "") -> dict:
+    """判断一次所谓“全量分片”是否真的完整覆盖了计划范围。"""
+    prefix = f"{side} 侧" if side else ""
+    issues: list[str] = []
+    if not plan.get("consistent"):
+        issues.append(
+            f"{prefix}分片计划 {plan.get('planned_rows', 0)} 行与总量 "
+            f"{plan.get('total_rows', 0)} 行不一致")
+    still_over = plan.get("still_over") or []
+    if still_over:
+        issues.append(f"{prefix}仍有 {len(still_over)} 个分片超过单片上限")
+    mismatch = fetched.get("mismatch") or []
+    if mismatch:
+        issues.append(f"{prefix}有 {len(mismatch)} 个分片实取行数与计划不一致")
+    fetched_rows = int(fetched.get("fetched") or 0)
+    total_rows = int(plan.get("total_rows") or 0)
+    if fetched_rows != total_rows:
+        issues.append(f"{prefix}实取 {fetched_rows} 行，明细总量为 {total_rows} 行")
+    # 去重，避免 fetched!=total 与 inconsistent 给出完全相同的话术。
+    issues = list(dict.fromkeys(issues))
+    return {"complete": not issues, "issues": issues}
+
+
 
 def suggest_time_range(sql: str) -> dict:
     """从 SQL 里已有的时间字面量猜一个默认范围，省得每次手填。
@@ -1783,6 +1816,13 @@ def _resolve_column(name: str, headers: list[str]) -> str | None:
     return None
 
 
+def _encode_key_parts(parts: list[str]) -> str:
+    """生成可读且无边界碰撞的主键文本，供页面和差异档案共同使用。"""
+    if len(parts) == 1:
+        return parts[0]
+    return json.dumps(parts, ensure_ascii=False, separators=(",", ":"))
+
+
 def compare_details(headers_a: list[str], rows_a: list[list],
                     headers_b: list[str], rows_b: list[list],
                     keys: list[str], sql_a: str = "", sql_b: str = "") -> dict:
@@ -1813,88 +1853,206 @@ def compare_details(headers_a: list[str], rows_a: list[list],
     def barename(h):
         return h.replace("`", "").split(".")[-1].lower()
 
+    # JDBC 允许结果集中出现重名列。此时 {列名: 下标} 会静默保留最后一列，
+    # 若重名的恰好是主键，真实主键差异会被错误对齐成“完全一致”。主键必须
+    # 唯一可定位；要求调用方在最外层给它设置唯一别名。
+    duplicate_key_fields = []
+    for side, side_headers, resolved_keys in (
+            ("A", headers_a, keys_a), ("B", headers_b, keys_b)):
+        counts = Counter(barename(h) for h in side_headers)
+        for key_name in resolved_keys:
+            bare = barename(key_name)
+            if counts[bare] > 1:
+                duplicate_key_fields.append(f"{side} 侧 `{bare}`（{counts[bare]} 列）")
+    if duplicate_key_fields:
+        raise ValueError(
+            "主键字段在结果集中重名，无法可靠对齐："
+            + "、".join(duplicate_key_fields)
+            + "。请在两侧 SQL 最外层为重复列设置唯一别名后重试")
+
     key_bare = {barename(k) for k in keys_a} | {barename(k) for k in keys_b}
+    a_bare_count = Counter(barename(h) for h in headers_a)
+    b_bare_count = Counter(barename(h) for h in headers_b)
     b_by_bare = {barename(h): h for h in headers_b}
+    ambiguous_bares = sorted(
+        bare for bare in set(a_bare_count) & set(b_bare_count)
+        if bare not in key_bare
+        and (a_bare_count[bare] > 1 or b_bare_count[bare] > 1)
+    )
     cmp_pairs = [(h, b_by_bare[barename(h)]) for h in headers_a
-                 if barename(h) in b_by_bare and barename(h) not in key_bare]
+                 if barename(h) in b_by_bare
+                 and barename(h) not in key_bare
+                 and a_bare_count[barename(h)] == 1
+                 and b_bare_count[barename(h)] == 1]
+    only_cols_a = [h for h in headers_a
+                   if barename(h) not in b_bare_count
+                   and barename(h) not in key_bare]
+    only_cols_b = [h for h in headers_b
+                   if barename(h) not in a_bare_count
+                   and barename(h) not in key_bare]
 
     def norm_cell(v):
+        """保留 NULL/空串/文字 NULL 的差别，只放宽纯数值表示。"""
         if v is None:
-            return ""
+            return ("null", "")
         s = str(v).strip()
-        if s.upper() in ("NULL", "NONE"):
-            return ""
-        try:                                   # 1 与 1.0 视为相同
-            return f"{float(s):.10g}"
-        except ValueError:
-            return s
+        if s == "":
+            return ("empty", "")
+        if isinstance(v, str) and re.fullmatch(r"[+-]?0\d+", s):
+            return ("text", s)       # 编码 001 与 1 不能按数值误判为相同
+        try:                                   # 1、1.0 与 1e0 视为相同
+            number = Decimal(s)
+            if number.is_finite():
+                if number == 0:
+                    number = Decimal(0)
+                return ("number", format(number.normalize(), "f"))
+        except (InvalidOperation, ValueError):
+            pass
+        return ("text", s)
+
+    def display_cell(v):
+        return "（数据库 NULL）" if v is None else str(v)
+
+    def blank_kind(v):
+        if v is None:
+            return "数据库 NULL"
+        if str(v).strip() == "":
+            return "空字符串"
+        return ""
+
+    def norm_key(v):
+        """Compare numeric keys loosely without collapsing zero-padded IDs."""
+        return norm_cell(v)
+
+    def key_text(key):
+        labels = {"null": "（NULL）", "empty": "（空字符串）"}
+        parts = [labels.get(kind, value) for kind, value in key]
+        # 复合主键不能用简单的 "+" 拼接：("a+b", "c") 与
+        # ("a", "b+c") 会得到同一个文本，差异档案随后会错误去重。
+        # JSON 数组既可读，又自带边界和转义，能稳定作为档案键。
+        return _encode_key_parts(parts)
 
     def index(rows, idx, key_cols):
         m: dict[tuple, list] = {}
-        for r in rows:
-            k = tuple(str(r[idx[c]]) if idx[c] < len(r) and r[idx[c]] is not None
-                      else "" for c in key_cols)
-            m.setdefault(k, []).append(r)
+        for row in rows:
+            key = tuple(norm_key(row[idx[c]]) if idx[c] < len(row)
+                        else ("null", "") for c in key_cols)
+            m.setdefault(key, []).append(row)
         return m
 
     ma, mb = index(rows_a, ia, keys_a), index(rows_b, ib, keys_b)
+    duplicate_keys_a = sum(1 for grouped in ma.values() if len(grouped) > 1)
+    duplicate_keys_b = sum(1 for grouped in mb.values() if len(grouped) > 1)
+    duplicate_rows_a = sum(len(grouped) for grouped in ma.values() if len(grouped) > 1)
+    duplicate_rows_b = sum(len(grouped) for grouped in mb.values() if len(grouped) > 1)
     logs: list[dict] = []
 
+    if only_cols_a or only_cols_b:
+        logs.append({
+            "level": "high", "key": "", "column": "",
+            "reason": "两侧字段结构不一致",
+            "detail": (f"仅 A 有：{', '.join(only_cols_a) or '无'}；"
+                       f"仅 B 有：{', '.join(only_cols_b) or '无'}。"
+                       "这些字段未参与值比较，不能据其余同名字段一致就判定整体一致"),
+        })
+    if ambiguous_bares:
+        logs.append({
+            "level": "high", "key": "", "column": "",
+            "reason": "结果集存在重名/歧义字段",
+            "detail": (f"歧义字段：{', '.join(ambiguous_bares)}。"
+                       "请在两侧 SQL 最外层给重复字段设置唯一别名后重试"),
+        })
+
     # 主键重复 = 一对多倍乘的直接证据
-    for tag, m in (("A", ma), ("B", mb)):
-        for k, rs in m.items():
-            if len(rs) > 1:
+    for tag, mapping in (("A", ma), ("B", mb)):
+        for key, grouped_rows in mapping.items():
+            if len(grouped_rows) > 1:
                 logs.append({
-                    "level": "high", "key": "+".join(k), "column": "",
-                    "reason": f"{tag} 侧主键重复 {len(rs)} 行",
+                    "level": "high", "key": key_text(key), "column": "",
+                    "reason": f"{tag} 侧主键重复 {len(grouped_rows)} 行",
                     "detail": "同一主键出现多行，存在一对多倍乘。"
                               "先按该主键 GROUP BY … HAVING COUNT(1)>1 定位是哪个 JOIN 放大的",
                 })
 
-    only_a = [k for k in ma if k not in mb]
-    only_b = [k for k in mb if k not in ma]
-    for k in only_a[:200]:
-        logs.append({"level": "high", "key": "+".join(k), "column": "",
-                     "reason": "只在 A 侧出现",
-                     "detail": "B 侧丢了这条。优先怀疑 INNER JOIN 未匹配、"
-                               "或 B 侧多了过滤条件"})
-    for k in only_b[:200]:
-        logs.append({"level": "high", "key": "+".join(k), "column": "",
-                     "reason": "只在 B 侧出现",
-                     "detail": "A 侧没有这条。优先怀疑 A 侧过滤更严、"
-                               "或 B 侧 JOIN 放大产生了新行"})
-
-    diffs, matched = [], 0
-    null_flip = 0
-    for k in ma:
-        if k not in mb:
+    # only_* 按行统计；共同主键的重复组先做最优配对，剩余行也必须计入。
+    only_a = [key for key, grouped_rows in ma.items() if key not in mb
+              for _ in grouped_rows]
+    only_b = [key for key, grouped_rows in mb.items() if key not in ma
+              for _ in grouped_rows]
+    pairs_by_key: dict[tuple, list[tuple[int, int]]] = {}
+    approximate_groups = 0
+    for key in ma:
+        if key not in mb:
             continue
-        for ra_row, rb_row in zip(ma[k], mb[k]):
+        normalized_a = [[norm_cell(row[ia[ca]]) if ia[ca] < len(row)
+                         else ("null", "") for ca, _ in cmp_pairs]
+                        for row in ma[key]]
+        normalized_b = [[norm_cell(row[ib[cb]]) if ib[cb] < len(row)
+                         else ("null", "") for _, cb in cmp_pairs]
+                        for row in mb[key]]
+        pair_meta: dict = {}
+        pairs, extra_a, extra_b = match_group(
+            normalized_a, normalized_b, pair_meta)
+        approximate_groups += int(bool(pair_meta.get("approximate")))
+        pairs_by_key[key] = pairs
+        only_a.extend([key] * len(extra_a))
+        only_b.extend([key] * len(extra_b))
+
+    count_a, count_b = Counter(only_a), Counter(only_b)
+    for key, count in list(count_a.items())[:200]:
+        shared = key in mb
+        logs.append({
+            "level": "high", "key": key_text(key), "column": "",
+            "reason": (f"A 侧重复组多出 {count} 行" if shared
+                       else f"只在 A 侧出现 {count} 行"),
+            "detail": ("同主键两侧行数不等，B 侧缺少重复明细。"
+                       if shared else "B 侧丢了这些行。优先怀疑 INNER JOIN 未匹配、"
+                       "或 B 侧多了过滤条件"),
+        })
+    for key, count in list(count_b.items())[:200]:
+        shared = key in ma
+        logs.append({
+            "level": "high", "key": key_text(key), "column": "",
+            "reason": (f"B 侧重复组多出 {count} 行" if shared
+                       else f"只在 B 侧出现 {count} 行"),
+            "detail": ("同主键两侧行数不等，B 侧存在额外重复明细。"
+                       if shared else "A 侧没有这些行。优先怀疑 A 侧过滤更严、"
+                       "或 B 侧 JOIN 放大产生了新行"),
+        })
+
+    diffs, matched, null_flip = [], 0, 0
+    for key, pairs in pairs_by_key.items():
+        for index_a, index_b in pairs:
+            row_a, row_b = ma[key][index_a], mb[key][index_b]
             matched += 1
             for ca, cb in cmp_pairs:
-                va = ra_row[ia[ca]] if ia[ca] < len(ra_row) else None
-                vb = rb_row[ib[cb]] if ib[cb] < len(rb_row) else None
-                na, nb = norm_cell(va), norm_cell(vb)
-                if na == nb:
+                value_a = row_a[ia[ca]] if ia[ca] < len(row_a) else None
+                value_b = row_b[ib[cb]] if ib[cb] < len(row_b) else None
+                if norm_cell(value_a) == norm_cell(value_b):
                     continue
-                diffs.append({"key": "+".join(k), "column": ca,
-                              "a": "" if va is None else str(va),
-                              "b": "" if vb is None else str(vb)})
-                if na == "" or nb == "":
+                diffs.append({"key": key_text(key), "col": ca,
+                              "a": display_cell(value_a),
+                              "b": display_cell(value_b)})
+                blank_a, blank_b = blank_kind(value_a), blank_kind(value_b)
+                if blank_a or blank_b:
                     null_flip += 1
-                    side = "B" if nb == "" else "A"
+                    if blank_a and blank_b:
+                        reason = f"空值口径不同：A 为{blank_a}，B 为{blank_b}"
+                    else:
+                        reason = f"{'A' if blank_a else 'B'} 侧为{blank_a or blank_b}"
                     logs.append({
-                        "level": "high", "key": "+".join(k), "column": ca,
-                        "reason": f"{side} 侧该字段为空",
-                        "detail": "一边有值一边为空，典型是 LEFT JOIN 右表没匹配上。"
-                                  "检查该字段来源表的关联键，或补 ifnull 兜底",
+                        "level": "high", "key": key_text(key), "column": ca,
+                        "reason": reason,
+                        "detail": f"A={display_cell(value_a)} / B={display_cell(value_b)}。"
+                                  "NULL、空字符串与文字 NULL 含义不同；"
+                                  "若来自 JOIN，再检查来源表关联键和空值兜底口径",
                     })
                 else:
                     logs.append({
-                        "level": "mid", "key": "+".join(k), "column": ca,
+                        "level": "mid", "key": key_text(key), "column": ca,
                         "reason": "同主键字段值不同",
-                        "detail": f"A={va} / B={vb}。若是金额或数量，"
-                                  f"检查是否 JOIN 倍乘导致重复累加",
+                        "detail": f"A={value_a} / B={value_b}。若是金额或数量，"
+                                  "检查是否 JOIN 倍乘导致重复累加",
                     })
 
     order = {"high": 0, "mid": 1, "low": 2}
@@ -1903,16 +2061,50 @@ def compare_details(headers_a: list[str], rows_a: list[list],
         logs.append({"level": "low", "key": "", "column": "",
                      "reason": "主键已自动换算", "detail": n})
     verdict = _verdict(len(only_a), len(only_b), len(diffs), null_flip, matched)
+    if only_cols_a or only_cols_b or ambiguous_bares:
+        verdict["level"] = "diff"
+        verdict["text"] = (
+            f"字段结构不一致：仅A {len(only_cols_a)} / 仅B {len(only_cols_b)} / "
+            f"歧义字段 {len(ambiguous_bares)}；{verdict['text']}"
+        )
+        verdict["next"] = (
+            "先统一最外层字段名，并为重复字段设置唯一别名；"
+            + verdict.get("next", "")
+        )
+    elif not cmp_pairs:
+        verdict["level"] = "warn"
+        verdict["text"] = f"只核对了 {matched} 行主键，未比较任何非主键业务字段"
+        verdict["next"] = (
+            "两侧只有主键可比，不能据此认定业务数据完全一致；"
+            "请补充至少一个金额、状态、时间等业务字段后重试"
+        )
+    elif (duplicate_keys_a or duplicate_keys_b) and verdict.get("level") == "ok":
+        verdict["level"] = "warn"
+        verdict["text"] = (
+            f"字段值当前一致，但主键不唯一：A {duplicate_keys_a} 组 / "
+            f"B {duplicate_keys_b} 组重复")
+        verdict["next"] = (
+            "先确认这是合法一对多还是 JOIN 倍乘；建议补充子项序号等字段组成复合主键，"
+            "并执行 GROUP BY 主键 HAVING COUNT(1)>1 定位重复来源")
+    if approximate_groups:
+        logs.insert(0, {
+            "level": "high", "key": "", "column": "",
+            "reason": "超大重复主键组采用有界近似配对",
+            "detail": (f"有 {approximate_groups} 组残余行数超过精确配对上限。"
+                       "为避免任务卡死已采用确定性近似配对；请补充更细主键后复核"),
+        })
+        if verdict.get("level") == "ok":
+            verdict["level"] = "warn"
     # 页面只回传有限数量的差异明细。若某主键还有被截断的差异，就不能把它
     # 放进档案复核范围，否则历史条目会因为“本轮未回传”而被误判为已修复。
     omitted_pks = {
         d["key"] for d in diffs[2000:]
     } | {
-        "+".join(k) for k in only_a[500:]
+        key_text(k) for k in only_a[500:]
     } | {
-        "+".join(k) for k in only_b[500:]
+        key_text(k) for k in only_b[500:]
     }
-    all_pks = ["+".join(k) for k in dict.fromkeys([*ma, *mb])]
+    all_pks = [key_text(k) for k in dict.fromkeys([*ma, *mb])]
     safe_pks = [pk for pk in all_pks if pk not in omitted_pks]
     pks_in_scope = safe_pks[:MAX_ARCHIVE_SCOPE_KEYS]
     archive_scope_truncated = bool(omitted_pks) or len(safe_pks) > len(pks_in_scope)
@@ -1922,10 +2114,17 @@ def compare_details(headers_a: list[str], rows_a: list[list],
                   "matched": matched,
                   "only_a": len(only_a), "only_b": len(only_b),
                   "cmp_cols": len(cmp_pairs), "diff_cells": len(diffs),
-                  "null_flip": null_flip},
+                  "null_flip": null_flip,
+                  "duplicate_keys_a": duplicate_keys_a,
+                  "duplicate_keys_b": duplicate_keys_b,
+                  "duplicate_rows_a": duplicate_rows_a,
+                  "duplicate_rows_b": duplicate_rows_b,
+                  "approximate_groups": approximate_groups,
+                  "only_cols_a": only_cols_a, "only_cols_b": only_cols_b,
+                  "ambiguous_cols": ambiguous_bares},
         "key_notes": key_notes,
-        "only_a": ["+".join(k) for k in only_a[:500]],
-        "only_b": ["+".join(k) for k in only_b[:500]],
+        "only_a": [key_text(k) for k in only_a[:500]],
+        "only_b": [key_text(k) for k in only_b[:500]],
         "pks_in_scope": pks_in_scope,
         "archive_scope_truncated": archive_scope_truncated,
         "diffs": diffs[:2000], "diffs_total": len(diffs),
@@ -1946,11 +2145,33 @@ def _one_side_empty(headers_a: list[str], rows_a: list[list],
     side = "A" if headers_a else "B"          # 有数据的那一侧
     live_h = headers_a or headers_b
     live_r = rows_a or rows_b
+    barename = lambda h: str(h).replace("`", "").split(".")[-1].lower()
+    header_counts = Counter(barename(h) for h in live_h)
     pos = {h: i for i, h in enumerate(live_h)}
     resolved = [_resolve_column(k, live_h) for k in keys]   # 保持主键填写顺序
-    idx = [pos[h] for h in resolved if h in pos]
-    ks = ["+".join(str(r[i]) if i < len(r) and r[i] is not None else ""
-                   for i in idx) for r in live_r] if idx else []
+    missing = [k for k, hit in zip(keys, resolved) if not hit]
+    if missing:
+        raise ValueError(f"有数据的 {side} 侧结果里找不到主键字段：{'、'.join(missing)}")
+    duplicate = [hit for hit in resolved if header_counts[barename(hit)] > 1]
+    if duplicate:
+        raise ValueError(
+            f"有数据的 {side} 侧结果里主键字段重名：{'、'.join(dict.fromkeys(duplicate))}。"
+            "请在 SQL 最外层设置唯一别名后重试")
+    idx = [pos[h] for h in resolved]
+
+    def raw_key(row):
+        parts = []
+        for i in idx:
+            value = row[i] if i < len(row) else None
+            if value is None:
+                parts.append("（NULL）")
+            elif str(value).strip() == "":
+                parts.append("（空字符串）")
+            else:
+                parts.append(str(value))
+        return _encode_key_parts(parts)
+
+    ks = [raw_key(r) for r in live_r] if idx else []
     empty = "B" if side == "A" else "A"
     if not live_r:
         text, nxt = "两侧都没有查到数据", ("时间范围可能整体落在数据之外，"
@@ -1971,7 +2192,10 @@ def _one_side_empty(headers_a: list[str], rows_a: list[list],
              for k in ks[:200]]
     return {
         "stats": {"rows_a": len(rows_a), "rows_b": len(rows_b),
-                  "keys": keys, "resolved_keys": {"a": [], "b": []},
+                  "keys": keys,
+                  "resolved_keys": {
+                      "a": resolved if side == "A" else [],
+                      "b": resolved if side == "B" else []},
                   "matched": 0,
                   "only_a": len(rows_a) if side == "A" else 0,
                   "only_b": len(rows_b) if side == "B" else 0,
@@ -2024,6 +2248,10 @@ def _verdict(only_a: int, only_b: int, diff_cells: int,
              null_flip: int, matched: int) -> dict:
     """把比对结果归纳成一句结论 + 下一步建议"""
     if not (only_a or only_b or diff_cells):
+        if matched == 0:
+            return {"level": "warn", "text": "两侧都是 0 行，没有可验证的业务数据",
+                    "next": "先确认时间窗、机构和状态过滤条件确实能查到数据，"
+                            "再判断两侧口径是否一致"}
         return {"level": "ok", "text": f"两侧 {matched} 行明细完全一致",
                 "next": "该时间窗内逻辑等价。可换其他时间窗再抽验，"
                         "尤其覆盖月初月末与有撤销/重算记录的日期"}
@@ -2041,6 +2269,55 @@ def _verdict(only_a: int, only_b: int, diff_cells: int,
     return {"level": "diff",
             "text": f"发现差异：仅A {only_a} / 仅B {only_b} / 字段差异 {diff_cells} 处",
             "next": "；".join(causes)}
+
+
+def qualify_sample_result(result: dict, limit: int) -> dict:
+    """Make it impossible to mistake a bounded sample for a full conclusion."""
+    verdict = result.setdefault("verdict", {})
+    original_text = verdict.get("text") or "已完成明细比较"
+    original_next = verdict.get("next") or ""
+    verdict["sample_only"] = True
+    verdict["text"] = f"抽样结果（每侧最多 {limit} 行）：{original_text}"
+    verdict["next"] = (
+        "抽样不构成最终结论；即使当前一致，也可能遗漏范围外差异。"
+        "没有稳定 ORDER BY 时，两次 LIMIT 还可能抽到不同记录。"
+        "正式验收请限定同一时间窗并使用「全量分片」。"
+        + (f" 原建议：{original_next}" if original_next else "")
+    )
+    if verdict.get("level") == "ok":
+        verdict["level"] = "warn"
+    return result
+
+
+def qualify_incomplete_scan(result: dict, issues: list[str]) -> dict:
+    """全量分片不完整时，禁止把已取到的子集包装成全量结论。"""
+    if not issues:
+        return result
+    verdict = result.setdefault("verdict", {})
+    original_text = verdict.get("text") or "已完成明细比较"
+    original_next = verdict.get("next") or ""
+    verdict["scan_complete"] = False
+    verdict["text"] = "全量取数未完整：" + original_text
+    verdict["next"] = (
+        "当前结果只能用于定位已取到范围内的差异，不能证明整个时间窗一致。"
+        + "；".join(issues)
+        + (f"。原建议：{original_next}" if original_next else "")
+    )
+    if verdict.get("level") == "ok":
+        verdict["level"] = "warn"
+    log = {
+        "level": "high", "key": "", "column": "",
+        "reason": "全量分片未完整覆盖",
+        "detail": "；".join(issues) + "。本轮不会关闭差异档案中的历史条目",
+    }
+    existing_logs = result.get("logs") or []
+    result["logs"] = [log, *existing_logs][:1000]
+    result["logs_total"] = int(result.get("logs_total") or len(existing_logs)) + 1
+    # 未完整覆盖时不能声明任何主键已被全量复核，否则档案会把未取到范围内的
+    # 历史差异误标为“已修复”。当前已发现的差异仍可追加到档案。
+    result["pks_in_scope"] = []
+    result["archive_scope_truncated"] = True
+    return result
 
 
 # ══════════════════════════════════════════════════════════════

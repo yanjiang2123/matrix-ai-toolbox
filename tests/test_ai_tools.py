@@ -28,6 +28,29 @@ class ReadonlyAuditTests(unittest.TestCase):
         )
         self.assertFalse(result["safe"])
 
+    def test_mariadb_executable_comment_is_blocked(self):
+        result = audit_readonly_sql(
+            "SELECT 1 /*M!100100 INTO OUTFILE '/tmp/export.txt' */"
+        )
+        self.assertFalse(result["safe"])
+
+    def test_mysql_dash_comment_requires_following_whitespace(self):
+        for sql in (
+            "SELECT 1--1; DROP TABLE orders",
+            "SELECT 1--x; DELETE FROM orders",
+        ):
+            with self.subTest(sql=sql):
+                self.assertFalse(audit_readonly_sql(sql)["safe"])
+
+    def test_hash_operator_cannot_hide_a_second_statement(self):
+        self.assertFalse(audit_readonly_sql(
+            "SELECT 1#1; DROP TABLE orders"
+        )["safe"])
+
+    def test_valid_dash_comment_is_still_accepted(self):
+        result = audit_readonly_sql("SELECT 1 -- explanation\nLIMIT 1")
+        self.assertTrue(result["safe"])
+
     def test_executable_comment_identifier_is_not_a_false_positive(self):
         result = audit_readonly_sql(
             "SELECT executable_comment FROM audit_log LIMIT 1"

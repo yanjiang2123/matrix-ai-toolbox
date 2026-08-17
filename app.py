@@ -68,6 +68,7 @@ JOB_MAX_COMPLETED = 32
 SESSION_TOKEN = secrets.token_urlsafe(32)
 UPLOAD_DIR = core.CACHE_DIR.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+XDIFF_SUFFIXES = frozenset({".xlsx", ".xlsm", ".csv", ".txt", ".tsv"})
 # 连库发现的表名对应存这里。打包后 .app 内部是只读的，必须落在家目录
 BASE_DIR = core.CACHE_DIR.parent
 AI_RUNTIME = ait.RuntimeAI()
@@ -938,6 +939,7 @@ def api_sql_compare_data():
 
     def work(progress):
         info = {}
+        scan_issues: list[str] = []
         if full_scan:
             # 两侧各自规划分片（数据分布可能不同，不能共用一套方案）
             progress("A 侧：规划时间分片…")
@@ -954,6 +956,9 @@ def api_sql_compare_data():
             progress(f"B 侧：{plan_b['slice_count']} 片，逐片取数…")
             fb = st.fetch_full_scan(rb, b, time_col, plan_b, keys,
                                     progress=lambda m: progress(f"B 侧 {m}"))
+            quality_a = st.assess_full_scan(plan_a, fa, "A")
+            quality_b = st.assess_full_scan(plan_b, fb, "B")
+            scan_issues = quality_a["issues"] + quality_b["issues"]
             ha, rows_a = fa["headers"], fa["rows"]
             hb, rows_b = fb["headers"], fb["rows"]
             info = {"mode": "full_scan",
@@ -971,7 +976,9 @@ def api_sql_compare_data():
                           "warning": plan_b["warning"], "note": fb["note"]},
                     "detail_mode": fa["detail_mode"] or fb["detail_mode"],
                     "detail_note": fa["detail_note"] or fb["detail_note"],
-                    "rewrite_note": plan_a["rewrite_note"]}
+                    "rewrite_note": plan_a["rewrite_note"],
+                    "complete": not scan_issues,
+                    "issues": scan_issues}
             sql_a_exec, sql_b_exec = fa["executed_sample"], fb["executed_sample"]
         else:
             # 抽样模式：在原层次改写时间条件，不套壳
@@ -991,6 +998,10 @@ def api_sql_compare_data():
 
         progress("按主键对齐比对明细…")
         r = st.compare_details(ha, rows_a, hb, rows_b, keys, sql_a=a, sql_b=b)
+        if not full_scan:
+            st.qualify_sample_result(r, batch)
+        elif scan_issues:
+            st.qualify_incomplete_scan(r, scan_issues)
         r["scan"] = info
         r["executed"] = {"sql_a": sql_a_exec, "sql_b": sql_b_exec,
                          "time_col": time_col, "start": start, "end": end,
@@ -1040,6 +1051,9 @@ def api_sql_export_log():
     p = request.get_json(force=True)
     logs = p.get("logs") or []
     diffs = p.get("diffs") or []
+    logs_total = int(p.get("logs_total") or len(logs))
+    diffs_total = int(p.get("diffs_total") or len(diffs))
+    detail_truncated = len(logs) < logs_total or len(diffs) < diffs_total
     stats = p.get("stats") or {}
     verdict = p.get("verdict") or {}
     executed = p.get("executed") or {}
@@ -1052,11 +1066,21 @@ def api_sql_export_log():
                   ["主键", ", ".join(stats.get("keys") or [])],
                   ["A 侧行数", stats.get("rows_a")],
                   ["B 侧行数", stats.get("rows_b")],
-                  ["匹配行对", stats.get("matched")],
-                  ["仅 A 有", stats.get("only_a")],
+                   ["匹配行对", stats.get("matched")],
+                   ["A 侧重复主键组", stats.get("duplicate_keys_a", 0)],
+                   ["B 侧重复主键组", stats.get("duplicate_keys_b", 0)],
+                   ["超大组近似配对", stats.get("approximate_groups", 0)],
+                   ["仅 A 有", stats.get("only_a")],
                   ["仅 B 有", stats.get("only_b")],
-                  ["字段差异数", stats.get("diff_cells")],
+                   ["字段差异数", stats.get("diff_cells")],
+                   ["差异明细（导出/总数）", f"{len(diffs)}/{diffs_total}"],
+                   ["排查日志（导出/总数）", f"{len(logs)}/{logs_total}"],
+                   ["导出完整性", ("页面回传明细已截断；总数完整，实际 SQL 可用于分片复核"
+                                  if detail_truncated else "全部已回传明细均已导出")],
                   ["一边为空的差异", stats.get("null_flip")],
+                  ["仅 A 有的字段", "、".join(stats.get("only_cols_a") or [])],
+                  ["仅 B 有的字段", "、".join(stats.get("only_cols_b") or [])],
+                  ["重名/歧义字段", "、".join(stats.get("ambiguous_cols") or [])],
                   ["业务时间字段", executed.get("time_col", "")],
                   ["时间范围", f"{executed.get('start','')} ~ {executed.get('end','')}"]]),
         "排查日志": (["级别", "明细主键", "字段", "出错原因", "说明"],
@@ -1070,7 +1094,10 @@ def api_sql_export_log():
                          ["B", executed.get("sql_b", "")]]),
     })
     return ok(file=out.name, path=str(out),
-              size=f"{out.stat().st_size / 1024:.0f} KB")
+              size=f"{out.stat().st_size / 1024:.0f} KB",
+              truncated=detail_truncated,
+              warning=("排查结果超过页面安全上限；报告已写明导出数/总数，"
+                       "请按实际 SQL 分片导出剩余证据" if detail_truncated else ""))
 
 
 # ── 5. Excel → INSERT / PDF / Word ─────────────────────────────
@@ -1080,9 +1107,30 @@ def _save_upload(field: str, suffix: str) -> Path:
     f = request.files.get(field)
     if not f:
         raise ValueError(f"请选择文件（{field}）")
-    path = UPLOAD_DIR / f"{int(time.time() * 1000)}_{field}{suffix}"
+    clean_suffix = str(suffix or "").lower()
+    if not re.fullmatch(r"\.[a-z0-9]{1,10}", clean_suffix):
+        clean_suffix = ".bin"
+    path = UPLOAD_DIR / f"{secrets.token_hex(12)}_{field}{clean_suffix}"
     f.save(path)
     return path
+
+
+def _resolve_xdiff_token(value) -> Path | None:
+    """Resolve a server-issued upload token without accepting client paths."""
+    token = str(value or "").strip()
+    if not token or Path(token).name != token:
+        return None
+    candidate = (UPLOAD_DIR / token).resolve()
+    root = UPLOAD_DIR.resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    if (not candidate.is_file()
+            or candidate.suffix.lower() not in XDIFF_SUFFIXES
+            or candidate.name.startswith(".")):
+        return None
+    return candidate
 
 
 @app.route("/api/excel/sheets", methods=["POST"])
@@ -1143,7 +1191,13 @@ def api_excel2doc():
 @api
 def api_image2rows():
     """图片 → 表格（Windows/macOS 原生 OCR 按坐标还原行列）。"""
-    img = _save_upload("file", Path(request.files["file"].filename).suffix or ".png")
+    uploaded = request.files.get("file")
+    if not uploaded:
+        return fail("请选择图片文件")
+    suffix = Path(uploaded.filename or "").suffix.lower() or ".png"
+    if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
+        return fail("图片格式不支持；请选择 PNG、JPG/JPEG 或 WebP")
+    img = _save_upload("file", suffix)
     r = cv.image_to_rows(img, min_fill=float(request.form.get("min_fill") or 0.15))
     return ok(**r)
 
@@ -1164,14 +1218,20 @@ def api_text2rows():
 def api_text2xlsx():
     """从原始文本直接导出完整 Excel；预览的 500 行上限不影响成品。"""
     p = request.get_json(force=True)
-    rows = core.text_to_rows(p.get("text") or "", p.get("delim") or "auto")
+    text = p.get("text") or ""
+    if not text.strip():
+        return fail("没有可导出的文本数据")
+    rows = core.text_to_rows(text, p.get("delim") or "auto")
+    if not rows or not any(any(str(cell).strip() for cell in row) for row in rows):
+        return fail("没有可导出的文本数据")
     has_header = bool(p.get("head", True)) and bool(rows)
     headers, data_rows = (rows[0], rows[1:]) if has_header else ([], rows)
     name = core.safe_name(p.get("name") or "文本转Excel")
     out = CLIENT.data_dir / f"{name}.xlsx"
     core.write_xlsx(out, {"数据": (headers, data_rows)})
     return ok(file=out.name, path=str(out), total=len(rows), rows=len(data_rows),
-              cols=len(rows[0]), size=f"{out.stat().st_size / 1024:.0f} KB")
+              cols=max((len(row) for row in rows), default=0),
+              size=f"{out.stat().st_size / 1024:.0f} KB")
 
 
 # ── 导出 ────────────────────────────────────────────────────────
@@ -1181,10 +1241,15 @@ def api_text2xlsx():
 @api
 def api_xdiff_upload():
     """两个文件先传上来，回两边的列清单与共有列，供选主键"""
-    pa = _save_upload("file_a", Path(request.files["file_a"].filename or "a").suffix
-                      or ".xlsx")
-    pb = _save_upload("file_b", Path(request.files["file_b"].filename or "b").suffix
-                      or ".xlsx")
+    file_a, file_b = request.files.get("file_a"), request.files.get("file_b")
+    if not file_a or not file_b:
+        return fail("请选择 A、B 两个待比对文件")
+    suffix_a = Path(file_a.filename or "").suffix.lower() or ".xlsx"
+    suffix_b = Path(file_b.filename or "").suffix.lower() or ".xlsx"
+    if suffix_a not in XDIFF_SUFFIXES or suffix_b not in XDIFF_SUFFIXES:
+        return fail("文件格式不支持；请选择 xlsx/xlsm/csv/txt/tsv（旧版 .xls 请先另存为 .xlsx）")
+    pa = _save_upload("file_a", suffix_a)
+    pb = _save_upload("file_b", suffix_b)
     ha, ra = xd.read_table(pa)
     hb, rb = xd.read_table(pb)
     common = xd.common_columns(ha, hb)
@@ -1207,8 +1272,9 @@ def api_xdiff_upload():
 def api_xdiff_compare():
     """按主键比两个文件。主键可以重复，重复组内按内容做最优配对"""
     p = request.get_json(force=True)
-    pa, pb = UPLOAD_DIR / (p.get("token_a") or ""), UPLOAD_DIR / (p.get("token_b") or "")
-    if not (pa.exists() and pb.exists()):
+    pa = _resolve_xdiff_token(p.get("token_a"))
+    pb = _resolve_xdiff_token(p.get("token_b"))
+    if not (pa and pb):
         return fail("上传的文件已失效，请重新上传")
     keys = [k for k in (p.get("keys") or []) if str(k).strip()]
     if not keys:
@@ -1226,7 +1292,12 @@ def api_xdiff_compare():
             progress(f"{s['dup_keys']} 个主键重复，组内做最优配对…")
         r["names"] = {"a": p.get("name_a") or pa.name, "b": p.get("name_b") or pb.name}
         r["tokens"] = {"a": pa.name, "b": pb.name}
-        # 页面只展示前若干条，完整结果导出到 Excel
+        # 页面只展示前若干条；必须同时给出总数，避免把预览条数误认为全量。
+        r["preview"] = {
+            "diffs": min(len(r["diffs"]), 300), "diffs_total": len(r["diffs"]),
+            "only_a": min(len(r["only_a"]), 200), "only_a_total": len(r["only_a"]),
+            "only_b": min(len(r["only_b"]), 200), "only_b_total": len(r["only_b"]),
+        }
         r["diffs"] = r["diffs"][:300]
         r["only_a"] = r["only_a"][:200]
         r["only_b"] = r["only_b"][:200]
@@ -1240,8 +1311,9 @@ def api_xdiff_compare():
 def api_xdiff_export():
     """重跑一遍并把完整结果导出成 Excel（页面上只有截断后的预览）"""
     p = request.get_json(force=True)
-    pa, pb = UPLOAD_DIR / (p.get("token_a") or ""), UPLOAD_DIR / (p.get("token_b") or "")
-    if not (pa.exists() and pb.exists()):
+    pa = _resolve_xdiff_token(p.get("token_a"))
+    pb = _resolve_xdiff_token(p.get("token_b"))
+    if not (pa and pb):
         return fail("上传的文件已失效，请重新上传后再导出")
     keys = [k for k in (p.get("keys") or []) if str(k).strip()]
     if not keys:
@@ -1259,9 +1331,22 @@ def api_xdiff_export():
         name = core.safe_name(p.get("name") or f"文件比对报告_{na}_vs_{nb}")
         out = CLIENT.data_dir / f"{name}.xlsx"
         core.write_xlsx(out, xd.build_report(r, na, nb))
+        exported = {
+            "diffs": min(len(r["diffs"]), xd.MAX_EXCEL_DIFF_ROWS),
+            "diffs_total": len(r["diffs"]),
+            "only_a": min(len(r["only_a"]), xd.MAX_EXCEL_DIFF_ROWS),
+            "only_a_total": len(r["only_a"]),
+            "only_b": min(len(r["only_b"]), xd.MAX_EXCEL_DIFF_ROWS),
+            "only_b_total": len(r["only_b"]),
+        }
+        truncated = any(exported[k] < exported[f"{k}_total"]
+                        for k in ("diffs", "only_a", "only_b"))
         return {"file": out.name, "path": str(out),
                 "size": f"{out.stat().st_size / 1024:.0f} KB",
-                "stats": r["stats"]}
+                "stats": r["stats"], "exported": exported,
+                "truncated": truncated,
+                "warning": ("差异明细数量超过 Excel 安全上限，报告已明确标注各页导出数/总数"
+                            if truncated else "")}
 
     return ok(job=start_job(work))
 

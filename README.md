@@ -13,7 +13,7 @@
 - openpyxl（Excel 读写）
 - fpdf2（Excel 转 PDF）
 - python-docx（Excel 转 Word）
-- macOS Vision OCR + Swift（图片识别）
+- Windows OCR API / macOS Vision + Swift（本机图片识别）
 - PyInstaller（可选，桌面应用打包）
 
 ## 安装与启动
@@ -91,11 +91,11 @@ AI 推理不能替代真实数据验证。复杂 SQL 超过单段 30000 字时�
 | SQL 查询 | 只读 SQL 执行、结果展示与导出 |
 | 表行数统计 | 读取元数据行数；未知时可逐表执行精确 `COUNT(*)` |
 | 库数据对比 | 表清单、行数和可配置表名映射比较 |
-| 单表数据对比 | 字段、行数及按主键抽样明细比较 |
+| 单表数据对比 | 字段、行数及按主键稳定排序的明细抽样；抽样结论会明确降级 |
 | 表对应关系 | 规则发现、预览、保存及手工维护表映射 |
-| 文件比对 | Excel/CSV/TXT/TSV 按主键逐格比较，重复键组内最优配对 |
-| 转 Excel | 结构化文本或图片 OCR 结果导出为 Excel |
-| Excel 转换 | Excel 转 INSERT SQL、PDF 或 Word |
+| 文件比对 | Excel/CSV/TXT/TSV 按主键逐格比较；重复键先配相同行，小组精确配对，超大组有界配对并告警 |
+| 文本/图片 → Excel | 结构化文本或本机 OCR 结果导出为带格式 Excel |
+| Excel → SQL/PDF/Word | Excel 转 INSERT SQL、PDF 或 Word；超宽文档按列组分页 |
 | 产物文件 | 查看和下载本地生成文件 |
 
 ## 配置文件
@@ -136,8 +136,8 @@ python -m py_compile app.py ai_tools.py matrix_core.py sql_tools.py excel_diff.p
 - 调用云端模型会把用户主动提交的需求、表结构或差异摘要发送给对应服务；是否允许发送由使用者和所在组织决定。
 - JDBC 查询器使用 `executeQuery()`，所有调用统一经过只读静态检查；数据库账号仍必须限制为只读。
 - 元数据行数可能滞后，精确统计需启用 `COUNT(*)`。
-- 库表清单、明细比较和文件处理存在行数上限；大数据量结果需要分片或分页。
-- 单表明细和普通 SQL 数据比较可能是上限内抽样，不等同于全表证明。
-- 图片转 Excel 依赖 macOS Vision；其他系统需要替换 OCR 实现。
+- 库表清单、明细比较和文件处理存在安全上限；页面预览或报告被截断时会标注“已显示/总数”。
+- 单表明细和普通 SQL 数据比较可能是稳定排序后的上限内抽样，不等同于全表证明；SQL 排查可在指定业务时间字段后使用全量分片。
+- 图片转 Excel 支持 Windows 10/11 与 macOS 的本机 OCR；低清、旋转、合并单元格等场景仍必须人工核对。
 - PDF/Word/Excel 的具体版式和 OCR 结果应在导出后人工复核。
 - 当前实现是 **Excel 转 PDF/Word**，不是 PDF/Word 转 Excel。

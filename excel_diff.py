@@ -4,7 +4,8 @@
 比 webapp 那版多的一件事：主键不唯一时做「基于内容的最优配对」。
 主键重复在业务明细表里很常见（同一订单包含多条子项），此时两侧各有 N、M 行，
 按出现顺序硬配会造出一堆假差异——同一批数据只要行序不同就全红。
-这里用匈牙利算法给出「总差异最小」的配对方案，剩下配不上的才算真的多/少。
+这里先用整行哈希配掉完全相同记录，小重复组再用匈牙利算法给出「总差异最小」
+的配对；极大重复组使用有界、可告警的确定性配对，避免 JOIN 倍乘数据拖垮进程。
 
 数据形态沿用工具箱其他模块的 headers/rows，读文件复用 matrix_core 的 openpyxl 通道。
 """
@@ -14,7 +15,7 @@ from __future__ import annotations
 import csv
 import io
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 
 # 这些写法都当空值看待，否则「NULL」与空单元格会被判成差异
@@ -62,19 +63,22 @@ def _read_delimited(path: Path, sep: str = "") -> tuple[list[str], list[list]]:
 
 
 def read_table(path: Path, sheet=None) -> tuple[list[str], list[list]]:
-    """读一个文件的表头与数据行。支持 xlsx/xls/csv/txt/tsv"""
+    """读一个文件的表头与数据行。支持 xlsx/xlsm/csv/txt/tsv。"""
     import matrix_core as core
 
     p = Path(path)
     ext = p.suffix.lower()
-    if ext in (".xlsx", ".xlsm", ".xls"):
+    if ext in (".xlsx", ".xlsm"):
         headers, rows = core.read_sheet(p, sheet)
         return [str(h).strip() for h in headers], rows
     if ext in (".csv",):
         return _read_delimited(p, ",")
     if ext in (".txt", ".tsv"):
         return _read_delimited(p)
-    raise ValueError(f"不支持的文件类型：{ext}。支持 xlsx / xls / csv / txt / tsv")
+    raise ValueError(
+        f"不支持的文件类型：{ext}。支持 xlsx / xlsm / csv / txt / tsv；"
+        "旧版 .xls 请先另存为 .xlsx"
+    )
 
 
 # ── 归一化 ──────────────────────────────────────────────────────
@@ -200,21 +204,66 @@ def greedy_assign(cost: list[list[int]]) -> list[int]:
     return assign
 
 
-def match_group(na: list[list[str]], nb: list[list[str]]) -> tuple[list, list, list]:
+def match_group(na: list[list[str]], nb: list[list[str]],
+                meta: dict | None = None) -> tuple[list, list, list]:
     """一个重复主键组内部的配对。na/nb 是两侧已归一化的比较列值。
 
     返回 (配上的下标对, A 侧没配上的下标, B 侧没配上的下标)。
     """
+    if meta is not None:
+        meta["approximate"] = False
     if not na or not nb:
         return [], list(range(len(na))), list(range(len(nb)))
-    cost = [[sum(1 for x, y in zip(ra, rb) if x != y) for rb in nb] for ra in na]
-    assign = (hungarian(cost) if max(len(na), len(nb)) <= HUNGARIAN_LIMIT
-              else greedy_assign(cost))
-    pairs = [(i, j) for i, j in enumerate(assign) if j != -1]
-    used_b = {j for _, j in pairs}
-    return (pairs,
-            [i for i, j in enumerate(assign) if j == -1],
-            [j for j in range(len(nb)) if j not in used_b])
+
+    def token(row):
+        values = tuple(row)
+        try:
+            hash(values)
+            return values
+        except TypeError:
+            return tuple(repr(v) for v in row)
+
+    # JOIN 倍乘时同一主键可能出现几千行。先按整行哈希配掉完全相同的内容，
+    # 既是最优配对的一部分，也避免先构造 n×m 代价矩阵耗尽内存。
+    buckets = defaultdict(deque)
+    for j, row in enumerate(nb):
+        buckets[token(row)].append(j)
+    exact_pairs: list[tuple[int, int]] = []
+    remaining_a: list[int] = []
+    used_b: set[int] = set()
+    for i, row in enumerate(na):
+        matches = buckets.get(token(row))
+        if matches:
+            j = matches.popleft()
+            exact_pairs.append((i, j))
+            used_b.add(j)
+        else:
+            remaining_a.append(i)
+    remaining_b = [j for j in range(len(nb)) if j not in used_b]
+    if not remaining_a or not remaining_b:
+        return exact_pairs, remaining_a, remaining_b
+
+    if max(len(remaining_a), len(remaining_b)) <= HUNGARIAN_LIMIT:
+        cost = [[sum(1 for x, y in zip(na[i], nb[j]) if x != y)
+                 for j in remaining_b] for i in remaining_a]
+        assign = hungarian(cost)
+        residual_pairs = [(remaining_a[i], remaining_b[j])
+                          for i, j in enumerate(assign) if j != -1]
+        unmatched_a = [remaining_a[i] for i, j in enumerate(assign) if j == -1]
+        paired_b = {j for _, j in residual_pairs}
+        unmatched_b = [j for j in remaining_b if j not in paired_b]
+    else:
+        # 超大残余组本来就不是可靠主键。采用确定性的排序配对，保持 O(n log n)
+        # 内存/时间上界；页面会同时报告重复主键，提示用户补充更细的业务键。
+        ordered_a = sorted(remaining_a, key=lambda i: repr(token(na[i])))
+        ordered_b = sorted(remaining_b, key=lambda j: repr(token(nb[j])))
+        if meta is not None:
+            meta["approximate"] = True
+        pair_count = min(len(ordered_a), len(ordered_b))
+        residual_pairs = list(zip(ordered_a[:pair_count], ordered_b[:pair_count]))
+        unmatched_a = ordered_a[pair_count:]
+        unmatched_b = ordered_b[pair_count:]
+    return exact_pairs + residual_pairs, unmatched_a, unmatched_b
 
 
 # ── 主流程 ──────────────────────────────────────────────────────
@@ -295,6 +344,19 @@ def compare_tables(ha: list[str], ra: list[list],
     if len(ra) > MAX_ROWS or len(rb) > MAX_ROWS:
         raise ValueError(f"单文件最多 {MAX_ROWS:,} 行"
                          f"（A {len(ra):,} 行、B {len(rb):,} 行）")
+
+    def duplicate_headers(headers):
+        counts = Counter(str(h).strip().lower() for h in headers)
+        return [str(h) for h in headers
+                if counts[str(h).strip().lower()] > 1]
+
+    dup_a = list(dict.fromkeys(duplicate_headers(ha)))
+    dup_b = list(dict.fromkeys(duplicate_headers(hb)))
+    if dup_a or dup_b:
+        raise ValueError(
+            "文件表头必须唯一，否则主键和字段值无法可靠定位："
+            f"A 侧重复 {dup_a or '无'}；B 侧重复 {dup_b or '无'}。"
+            "请先修改重复表头后重试")
     ia, ib = _col_index(ha), _col_index(hb)
     missing = ([f"A 侧缺 {k}" for k in keys if k not in ia] +
                [f"B 侧缺 {k}" for k in keys if k not in ib])
@@ -327,7 +389,7 @@ def compare_tables(ha: list[str], ra: list[list],
     nb = {n: [norm(_cell(rb[n], i)) for i in cb] for n in range(len(rb))}
 
     diffs, only_a, only_b = [], [], []
-    matched = uniq_keys = dup_keys = 0
+    matched = uniq_keys = dup_keys = approximate_groups = 0
     dup_unmatched_a = dup_unmatched_b = 0
     dup_rows_a = dup_rows_b = 0
 
@@ -355,7 +417,10 @@ def compare_tables(ha: list[str], ra: list[list],
             dup_keys += 1
             dup_rows_a += len(ias)
             dup_rows_b += len(ibs)
-            pairs, ua, ub = match_group([na[n] for n in ias], [nb[n] for n in ibs])
+            pair_meta: dict = {}
+            pairs, ua, ub = match_group(
+                [na[n] for n in ias], [nb[n] for n in ibs], pair_meta)
+            approximate_groups += int(bool(pair_meta.get("approximate")))
             dup_unmatched_a += len(ua)
             dup_unmatched_b += len(ub)
         matched += len(pairs)
@@ -389,6 +454,7 @@ def compare_tables(ha: list[str], ra: list[list],
         "only_col_a": [h for h in ha if h not in set(hb)],
         "only_col_b": [h for h in hb if h not in set(ha)],
         "unique_keys": uniq_keys, "dup_keys": dup_keys,
+        "approximate_groups": approximate_groups,
         "dup_rows_a": dup_rows_a, "dup_rows_b": dup_rows_b,
         "matched": matched,
         "truly_only_a": truly_a, "truly_only_b": truly_b,
@@ -402,7 +468,30 @@ def compare_tables(ha: list[str], ra: list[list],
 
 def verdict(s: dict) -> dict:
     """一句结论 + 下一步。跟 SQL 排查那边保持同一套话术"""
-    if not (s["only_a"] or s["only_b"] or s["diff_cells"]):
+    row_diff = bool(s["only_a"] or s["only_b"] or s["diff_cells"])
+    structure_diff = bool(s["only_col_a"] or s["only_col_b"])
+    if not row_diff and structure_diff:
+        return {
+            "level": "diff",
+            "text": (f"字段结构不一致：仅 A 有 {len(s['only_col_a'])} 列 / "
+                     f"仅 B 有 {len(s['only_col_b'])} 列；共有字段当前值一致"),
+            "next": "先统一字段清单和名称；单边字段没有参与值比较，不能判定整体一致",
+        }
+    if not row_diff and not s["cmp_cols"]:
+        return {
+            "level": "warn",
+            "text": f"只对齐了 {s['matched']} 行主键，未比较任何非主键业务字段",
+            "next": "至少保留一个金额、状态或时间等共有业务字段后再判断数据是否一致",
+        }
+    if not row_diff and s["dup_keys"]:
+        return {
+            "level": "warn",
+            "text": (f"字段值当前一致，但有 {s['dup_keys']} 个重复主键组，"
+                     + (f"其中 {s.get('approximate_groups', 0)} 组过大、采用有界近似配对"
+                        if s.get("approximate_groups") else "已按内容配对")),
+            "next": "确认重复是否符合业务粒度；若不是合法一对多，请补充子项序号等字段组成复合主键",
+        }
+    if not row_diff:
         return {"level": "ok",
                 "text": f"两边 {s['matched']} 行完全一致",
                 "next": f"比了 {len(s['cmp_cols'])} 个共有列。"
@@ -422,9 +511,14 @@ def verdict(s: dict) -> dict:
         nxt.append(f"有 {s['dup_keys']} 个主键重复（A {s['dup_rows_a']} 行 / "
                    f"B {s['dup_rows_b']} 行），已按内容最优配对；"
                    f"主键选得更细一些能减少这类不确定")
+    if s.get("approximate_groups"):
+        nxt.append(f"其中 {s['approximate_groups']} 个超大重复组为避免卡死采用有界近似配对，"
+                   "请补充更细主键后复核这些组")
     if s["only_col_a"] or s["only_col_b"]:
         nxt.append(f"列名不一致：只有 A 有 {len(s['only_col_a'])} 列、"
                    f"只有 B 有 {len(s['only_col_b'])} 列，这些列没参与对比")
+    if not s["cmp_cols"]:
+        nxt.append("两侧只有主键可比，不能据此判断其余业务字段")
     if s["diff_cells"]:
         nxt.append("字段值差异先看是不是格式问题（数值尾零、大小写、空格），"
                    "可以调上面的比对选项再跑一次")
@@ -439,6 +533,12 @@ def build_report(res: dict, name_a: str = "A", name_b: str = "B") -> dict:
     s = res["stats"]
     v = res["verdict"]
     keys, cols = s["keys"], s["cmp_cols"]
+    exported_diffs = min(len(res["diffs"]), MAX_EXCEL_DIFF_ROWS)
+    exported_only_a = min(len(res["only_a"]), MAX_EXCEL_DIFF_ROWS)
+    exported_only_b = min(len(res["only_b"]), MAX_EXCEL_DIFF_ROWS)
+    truncated = (exported_diffs < len(res["diffs"])
+                 or exported_only_a < len(res["only_a"])
+                 or exported_only_b < len(res["only_b"]))
     summary = [["结论", v["text"]], ["下一步", v["next"]],
                ["A 文件", name_a], ["B 文件", name_b],
                ["主键列", "、".join(keys)],
@@ -446,12 +546,18 @@ def build_report(res: dict, name_a: str = "A", name_b: str = "B") -> dict:
                ["参与对比的列数", len(cols)],
                ["唯一主键（1:1 对上）", s["unique_keys"]],
                ["重复主键（按内容配对）", s["dup_keys"]],
+               ["超大组近似配对", s.get("approximate_groups", 0)],
                ["配上的行对", s["matched"]],
                ["仅 A 有（主键缺失）", s["truly_only_a"]],
                ["仅 B 有（主键缺失）", s["truly_only_b"]],
                ["重复组内 A 未配上", s["dup_unmatched_a"]],
                ["重复组内 B 未配上", s["dup_unmatched_b"]],
                ["字段值差异数", s["diff_cells"]],
+               ["字段差异明细（导出/总数）", f"{exported_diffs}/{len(res['diffs'])}"],
+               ["仅 A 明细（导出/总数）", f"{exported_only_a}/{len(res['only_a'])}"],
+               ["仅 B 明细（导出/总数）", f"{exported_only_b}/{len(res['only_b'])}"],
+               ["导出完整性", ("明细已按安全上限截断，统计总数仍为完整结果"
+                              if truncated else "全部差异明细已导出")],
                ["只有 A 有的列", "、".join(s["only_col_a"]) or "无"],
                ["只有 B 有的列", "、".join(s["only_col_b"]) or "无"]]
 

@@ -61,22 +61,20 @@ def _mask_literals_and_comments(sql: str) -> str:
             out.append(" ")
             i += 1
             continue
-        if ch == "-" and nxt == "-":
+        if (ch == "-" and nxt == "-"
+                and (i + 2 >= n or ord(sql[i + 2]) <= 32
+                     or ord(sql[i + 2]) == 127)):
             i += 2
             while i < n and sql[i] not in "\r\n":
                 i += 1
             out.append("\n")
             continue
-        if ch == "#":
-            i += 1
-            while i < n and sql[i] not in "\r\n":
-                i += 1
-            out.append("\n")
-            continue
         if ch == "/" and nxt == "*":
-            # MySQL 的 /*! ... */ 不是普通注释：服务端会按版本条件执行其中内容。
+            # MySQL /*! ... */ 与 MariaDB /*M! ... */ 会由服务端执行。
             # 保留一个哨兵交给审计层直接拦截，避免危险关键字随注释一起被抹掉。
-            executable = i + 2 < n and sql[i + 2] == "!"
+            executable = (i + 2 < n and sql[i + 2] == "!") or (
+                i + 3 < n and sql[i + 2:i + 4].lower() == "m!"
+            )
             i += 2
             while i + 1 < n and not (sql[i] == "*" and sql[i + 1] == "/"):
                 out.append("\n" if sql[i] == "\n" else " ")
@@ -108,7 +106,7 @@ def audit_readonly_sql(sql: str) -> dict:
     if has_executable_comment:
         issues.append({
             "level": "blocked",
-            "message": "检测到 MySQL 可执行注释 /*! ... */；只读模式不允许执行条件注释",
+            "message": "检测到 MySQL/MariaDB 可执行注释；只读模式不允许执行条件注释",
         })
     # 允许结尾一个分号，但正文里出现分号时按多语句处理。
     body = masked[:-1].rstrip() if masked.endswith(";") else masked

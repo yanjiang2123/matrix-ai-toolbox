@@ -88,11 +88,11 @@
       </div>
       <div class="feature-grid">
         <article><span class="feature-no">01</span><h3>只读查询与表统计</h3><p>运行时填写 JDBC URL、驱动类和驱动 JAR；执行只读 SQL，并读取表清单、元数据行数或精确 COUNT。</p><div><b>JDBC</b><b>只读检查</b><b>表行数统计</b></div></article>
-        <article><span class="feature-no">02</span><h3>SQL 拆分与逻辑排查</h3><p>拆分多语句和长 SQL，提取表、JOIN、过滤条件与字段差异，输出可以继续验证的静态证据。</p><div><b>SQL Parser</b><b>差异证据</b><b>验证建议</b></div></article>
+        <article><span class="feature-no">02</span><h3>SQL 拆分与逻辑排查</h3><p>拆分长 SQL，对比表、字段、JOIN、过滤、分组与聚合口径，并给出重复键、丢数和倍乘的验证建议。</p><div><b>SQL Parser</b><b>差异证据</b><b>验证建议</b></div></article>
         <article><span class="feature-no">03</span><h3>AI 辅助分析</h3><p>在本地证据基础上调用兼容模型接口，区分直接证据、可能影响和待验证假设；生成内容不会自动执行。</p><div><b>可选能力</b><b>人工确认</b><b>安全复检</b></div></article>
-        <article><span class="feature-no">04</span><h3>数据库数据比较</h3><p>比较库表清单、表行数、字段和按主键抽样的明细数据，并支持维护不同环境之间的表名映射。</p><div><b>库级对比</b><b>单表对比</b><b>表映射</b></div></article>
+        <article><span class="feature-no">04</span><h3>数据库数据比较</h3><p>比较库表清单、表行数、字段和按主键对齐的明细；支持稳定抽样、按业务时间全量分片，以及环境间表名映射。</p><div><b>库级对比</b><b>单表对比</b><b>全量分片</b></div></article>
         <article><span class="feature-no">05</span><h3>Excel / CSV 文件核对</h3><p>按主键逐格比较文件，定位新增、缺失和字段不一致；重复键数据在组内进行匹配，减少误报。</p><div><b>openpyxl</b><b>主键比较</b><b>差异导出</b></div></article>
-        <article><span class="feature-no">06</span><h3>结构化文件转换</h3><p>支持 Excel 转 INSERT SQL、PDF、Word，以及结构化文本转 Excel；图片 OCR 当前依赖 macOS Vision。</p><div><b>INSERT</b><b>PDF / Word</b><b>文本转 Excel</b></div></article>
+        <article><span class="feature-no">06</span><h3>结构化文件转换</h3><p>支持 Excel 转 INSERT SQL、PDF、Word，以及文本或图片转 Excel；OCR 可在 Windows 10/11 与 macOS 本地运行。</p><div><b>INSERT</b><b>PDF / Word</b><b>OCR → Excel</b></div></article>
       </div>
     </section>
 
@@ -140,8 +140,8 @@
         <ul>
           <li>数据库功能需要对应 JDBC 驱动与可用 JDK</li>
           <li>AI 功能需要使用者提供兼容接口和模型配置</li>
-          <li>图片 OCR 目前仅适配 macOS Vision</li>
-          <li>大数据量比较仍需要继续完善分页与分片</li>
+          <li>图片 OCR 支持 Windows 10/11 与 macOS，但结果仍需人工核对</li>
+          <li>数据库全量核对需要可用的业务时间字段；超大结果会明确标注预览与导出上限</li>
         </ul>
       </aside>
     </section>

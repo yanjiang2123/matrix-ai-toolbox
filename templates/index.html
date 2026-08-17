@@ -65,6 +65,8 @@ button.btn:disabled{opacity:.55;cursor:not-allowed}
 .stat.click{cursor:pointer}
 .stat.click:hover{background:#f0f2f5}
 .stat.click.on{border-color:var(--pri);box-shadow:0 0 0 2px #dbe4f5}
+.stat.click:focus,.seg .hd:focus,tbody tr[role=button]:focus{
+  outline:2px solid var(--pri);outline-offset:2px}
 
 /* 结果表 */
 .tablewrap{background:#fff;border:1px solid var(--bd);border-radius:8px;overflow:auto;max-height:56vh}
@@ -117,6 +119,10 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
   .page{scroll-margin-top:62px}
   footer{padding:5px 12px}
   footer .footer-path{flex:1 1 100%;margin-left:20px}
+}
+@media(max-width:360px){
+  .row>div{min-width:0!important;max-width:100%}
+  .row input,.row select,.row textarea{min-width:0!important;max-width:100%}
 }
 
 /* 子标签 */
@@ -172,11 +178,11 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
     <button class="btn" onclick="toggleAiConfigPanel()">AI 模型</button>
     <button class="btn pri" onclick="toggleConnectionPanel()">数据库连接</button>
     <button class="btn" onclick="switchPage('files')">产物文件</button>
-    <button class="btn" onclick="post('/api/reveal',{}).then(()=>say('已在 Finder 打开'))">打开产物目录</button>
+    <button class="btn" onclick="revealArtifacts()">打开产物目录</button>
   </div>
 </header>
 
-<nav>
+<nav aria-label="主要功能" role="tablist">
   <button class="on" data-p="ai">AI SQL 助手</button>
   <button data-p="probe">SQL 排查工作台</button>
   <button data-p="sql">SQL 查询</button>
@@ -190,7 +196,7 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
   <button data-p="files">产物文件</button>
 </nav>
 
-<main>
+<main aria-busy="false">
 <section class="card" id="conn-panel" hidden>
   <h3 style="margin:0 0 10px">运行时数据库连接</h3>
   <div class="conn-note">
@@ -746,14 +752,14 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
 <!-- ══ 文件比对（Excel / CSV）══ -->
 <section class="page" id="p-xd">
   <p class="hint">两个 Excel / CSV 逐格比。<b>主键允许重复</b>——同一主键两边各有多行时，
-    按内容做最优配对（总差异最小），不会因为行序不同就报出一堆假差异。
+    先配完全相同的行，小重复组再做总差异最小配对；超大组会采用有界近似并明确告警，避免任务卡死。
     只有<b>同名列</b>参与对比，列名不一致的会单独列出来。</p>
   <div class="card">
     <div class="row">
       <label style="width:34px"><b>文件 A</b></label>
-      <input type="file" id="xd-fa" accept=".xlsx,.xls,.csv,.txt,.tsv">
+      <input type="file" id="xd-fa" accept=".xlsx,.xlsm,.csv,.txt,.tsv">
       <label style="width:34px"><b>文件 B</b></label>
-      <input type="file" id="xd-fb" accept=".xlsx,.xls,.csv,.txt,.tsv">
+      <input type="file" id="xd-fb" accept=".xlsx,.xlsm,.csv,.txt,.tsv">
       <button class="btn pri" onclick="xdUpload()">上传并读列名</button>
       <span id="xd-up" style="color:var(--mute);font-size:13px"></span>
     </div>
@@ -774,7 +780,7 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
     </div>
     <div class="row" id="xd-runrow" style="display:none">
       <button class="btn pri" id="xd-run" onclick="xdRun()">▶ 开始比对</button>
-      <button class="btn" onclick="xdExport()">导出完整报告</button>
+      <button class="btn" onclick="xdExport()">导出报告（含完整性标注）</button>
       <span id="xd-info" style="color:var(--mute);font-size:13px"></span>
     </div>
   </div>
@@ -821,7 +827,7 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
     <div class="card" style="display:none" id="ci-out">
       <div class="row"><b>生成结果预览</b>
         <span id="ci-file-info" style="color:var(--mute);font-size:13px;margin-left:8px"></span></div>
-      <textarea id="ci-sql" class="dark" rows="14" readonly style="margin-top:6px"></textarea>
+      <textarea id="ci-sql" class="dark" rows="14" readonly aria-label="生成的 INSERT SQL 预览" style="margin-top:6px"></textarea>
     </div>
   </div>
 
@@ -847,7 +853,7 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
       </div>
       <div id="cd-probe"></div>
       <p class="hint" style="margin:8px 0 0">本机没装 LibreOffice/Office，转换由纯 Python 完成：
-        PDF 用系统中文字体嵌入并自动分页，Word 生成带表头底色的表格。
+        PDF 用系统中文字体嵌入并自动分页，Word 生成带表头底色的表格；超宽表会拆成列组并重复首列。
         选完文件会先探测工作表——<b>转出来是空的多半是数据在别的工作表上</b>。</p>
     </div>
     <div id="cd-out"></div>
@@ -857,7 +863,8 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
 <!-- ══ 转 Excel（文本 / 图片）══ -->
 <section class="page" id="p-t2x">
   <p class="hint"><b>文本/图片 → Excel：</b>自动设置中文字体、表头、细边框、筛选、换行、行高列宽和打印页面。
-    文本预览最多显示 500 行，但生成 Excel 会导出全部内容；图片 OCR 支持 Windows 10/11 与 macOS，识别结果需人工核对。</p>
+    文本预览最多显示 500 行，但生成 Excel 会导出全部内容；极端长单元格内容完整保留，但行高会封顶，必要时可在 Excel 中展开；
+    图片 OCR 支持 Windows 10/11 与 macOS，识别结果需人工核对。</p>
 
   <div class="subnav">
     <button class="on" data-s="txt">文本 → Excel</button>
@@ -935,8 +942,8 @@ footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
 <datalist id="ot-listB"></datalist>
 
 <footer>
-  <span class="spin" id="spin"></span>
-  <span id="msg">就绪</span>
+  <span class="spin" id="spin" aria-hidden="true"></span>
+  <span id="msg" role="status" aria-live="polite" aria-atomic="true">就绪</span>
   <span class="footer-path">产物目录 {{ data_dir }}</span>
 </footer>
 
@@ -950,7 +957,10 @@ const RISK_ICON = {high:'🔴', mid:'🟠', low:'🟡'};
 
 /* ── 基础设施 ── */
 function say(m, kind=''){ const e=q('#msg'); e.textContent=m; e.className=kind; }
-function busy(on){ q('#spin').classList.toggle('on', on); }
+function busy(on){
+  q('#spin').classList.toggle('on', on);
+  q('main').setAttribute('aria-busy', String(Boolean(on)));
+}
 function syncFooterSpacing(){
   const e=q('footer');
   if(e) document.documentElement.style.setProperty('--footer-h', Math.ceil(e.getBoundingClientRect().height)+'px');
@@ -958,14 +968,42 @@ function syncFooterSpacing(){
 if('ResizeObserver' in window) new ResizeObserver(syncFooterSpacing).observe(q('footer'));
 window.addEventListener('resize', syncFooterSpacing);
 syncFooterSpacing();
+async function requestJson(url, options={}){
+  const timeoutMs=options.timeoutMs||5*60*1000;
+  const fetchOptions={...options}; delete fetchOptions.timeoutMs;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  fetchOptions.signal=controller.signal;
+  try{
+    const response = await fetch(url, fetchOptions);
+    let data;
+    try{ data = await response.json(); }
+    catch(_){ return {ok:false,msg:`服务返回了无法解析的响应（HTTP ${response.status}）`}; }
+    if(!response.ok)
+      return {ok:false,msg:data.msg||`请求失败（HTTP ${response.status}）`};
+    return data;
+  } catch(error){
+    const timeoutLabel=timeoutMs>=60000 ? `${Math.ceil(timeoutMs/60000)} 分钟` :
+      `${Math.ceil(timeoutMs/1000)} 秒`;
+    return {ok:false,msg:error?.name==='AbortError'
+      ? `请求等待超过 ${timeoutLabel}，已停止；请缩小范围或检查本机服务`
+      : '无法连接本机服务；请确认程序仍在运行后重试'};
+  } finally {
+    clearTimeout(timer);
+  }
+}
 async function post(url, body){
-  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json',
-    'X-Toolbox-Token':SESSION_TOKEN},
-    body: JSON.stringify(body)});
-  return r.json();
+  return requestJson(url, {method:'POST', headers:{'Content-Type':'application/json',
+    'X-Toolbox-Token':SESSION_TOKEN}, body:JSON.stringify(body)});
+}
+async function revealArtifacts(){
+  const r=await post('/api/reveal',{});
+  if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+  say('已在资源管理器 / Finder 中打开产物目录','ok');
 }
 function toggleConnectionPanel(){
   const panel=q('#conn-panel'), opening=panel.hidden;
+  if(opening) ST.connPanelTrigger=document.activeElement;
   q('#ai-config-panel').hidden=true;
   panel.hidden=!opening;
   if(opening){ window.scrollTo({top:0,behavior:'smooth'}); q('#cn-label').focus(); }
@@ -1001,6 +1039,7 @@ async function disconnectConnection(){
 /* AI 配置与助手 */
 function toggleAiConfigPanel(){
   const panel=q('#ai-config-panel'), opening=panel.hidden;
+  if(opening) ST.aiPanelTrigger=document.activeElement;
   q('#conn-panel').hidden=true;
   panel.hidden=!opening;
   if(opening){ window.scrollTo({top:0,behavior:'smooth'}); q('#ac-url').focus(); }
@@ -1112,16 +1151,21 @@ async function analyzeAiMaterial(){
 /* 长任务：发起 → 轮询进度 */
 async function runJob(url, body, btn, label){
   const old = btn ? btn.textContent : null;
+  const deadline = Date.now() + 60*60*1000;
   if(btn){ btn.disabled=true; btn.textContent='⏳ '+label; }
   busy(true);
   try{
     const st = await post(url, body);
     if(!st.ok){ say(st.msg, 'err'); alert(st.msg); return null; }
     while(true){
+      if(Date.now()>deadline){
+        const msg='任务等待超过 60 分钟，已停止轮询；请缩小范围后重试';
+        say(msg,'err'); alert(msg); return null;
+      }
       await new Promise(r=>setTimeout(r, 700));
-      const j = await (await fetch('/api/job/'+st.job)).json();
-      if(!j.done){ say(j.msg||'处理中…'); continue; }
+      const j = await requestJson('/api/job/'+encodeURIComponent(st.job),{timeoutMs:15000});
       if(!j.ok){ say(j.msg,'err'); alert(j.msg); return null; }
+      if(!j.done){ say(j.msg||'处理中…'); continue; }
       return j;
     }
   } finally {
@@ -1149,14 +1193,18 @@ function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function statHtml(items){
   return items.map(([label, val, cls, key])=>
-    `<div class="stat ${cls||''} ${key?'click':''}" ${key?`data-k="${key}"`:''}>${label}<b>${val}</b></div>`
+    `<div class="stat ${cls||''} ${key?'click':''}" ${key?`data-k="${key}" role="button" tabindex="0"`:''}>${label}<b>${val}</b></div>`
   ).join('');
 }
 
 /* Tab 切换：切换功能时先收起顶部配置面板，避免页面已切换但被长表单挡住。 */
 function closeTopPanels(){
+  const active=document.activeElement;
+  const restore=q('#conn-panel').contains(active) ? ST.connPanelTrigger :
+    (q('#ai-config-panel').contains(active) ? ST.aiPanelTrigger : null);
   q('#conn-panel').hidden=true;
   q('#ai-config-panel').hidden=true;
+  if(restore?.focus) setTimeout(()=>restore.focus(),0);
 }
 function switchPage(name){
   const tab=qa('nav button').find(x=>x.dataset.p===name);
@@ -1168,7 +1216,10 @@ function switchPage(name){
 qa('nav button').forEach(b=>b.onclick=()=>{
   closeTopPanels();
   qa('nav button').forEach(x=>x.classList.toggle('on', x===b));
+  qa('nav button').forEach(x=>x.tabIndex=x===b?0:-1);
   qa('.page').forEach(p=>p.classList.toggle('on', p.id==='p-'+b.dataset.p));
+  qa('nav button').forEach(x=>x.setAttribute('aria-selected', String(x===b)));
+  qa('.page').forEach(p=>p.setAttribute('aria-hidden', String(p.id!=='p-'+b.dataset.p)));
   const active=q('#p-'+b.dataset.p);
   if(active) active.scrollIntoView({behavior:'smooth',block:'start'});
   if(b.dataset.p==='files') loadFiles();
@@ -1240,7 +1291,7 @@ async function runRowCount(){
 }
 /* 拉所有对应关系分组，填进「套对应关系」前面的下拉。没存过就给一行提示 */
 async function loadRcGroups(){
-  const r = await (await fetch('/api/mapping/groups')).json();
+  const r = await requestJson('/api/mapping/groups');
   const sel = q('#rc-map-group');
   if(!r.ok || !r.groups.length){
     sel.innerHTML = '<option value="">（还没存过对应关系，请先去「表对应关系」页配一次）</option>';
@@ -1435,8 +1486,12 @@ function showCp(key){
 /* 点结果里的表名 → 带着库名表名跳到单表数据对比，省去手打长表名 */
 function bindCpDrill(){
   qa('#cp-table tbody tr').forEach(tr=>{
+    const names=[...tr.children].slice(0,2).map(c=>c.textContent.trim()).filter(Boolean);
     tr.style.cursor='pointer';
     tr.title='点击 → 到「单表数据对比」钻进这张表';
+    tr.tabIndex=0;
+    tr.setAttribute('role','button');
+    tr.setAttribute('aria-label',`钻取 ${names.join(' 对比 ')||'该表'} 到单表数据对比`);
     tr.onclick=()=>{
       const c=tr.children;
       const a=(c[0]?.textContent||'').trim(), b=(c[1]?.textContent||'').trim();
@@ -1513,14 +1568,20 @@ async function runTableCompare(){
   const cs=R.col_summary, ct=R.count, d=R.data;
   const structOk = !cs.only_a && !cs.only_b && !cs.type_diff;
   const countOk = ct.delta===0;
-  const dataOk = d ? (d.verdict.level==='ok') : null;
+  const dataLevel = d ? d.verdict.level : null;
+  const dataOk = d ? dataLevel==='ok' : null;
   let lvl='ok', txt='', next=[];
   if(!structOk){ lvl='diff'; next.push('先解决字段结构差异：字段缺失/类型不一致会让下游脚本直接取不到值'); }
   if(!countOk){ lvl='diff'; next.push(`行数差 ${ct.delta>0?'+':''}${ct.delta.toLocaleString()}：先查采集任务是否漏批次、过滤条件是否同口径`); }
-  if(d && !dataOk){ lvl='diff'; next.push(d.verdict.next); }
-  txt = (structOk&&countOk&&(dataOk!==false))
+  if(d && dataLevel==='diff'){ lvl='diff'; next.push(d.verdict.next); }
+  else if(d && dataLevel==='warn'){
+    if(lvl==='ok') lvl='warn';
+    next.push(d.verdict.next);
+  }
+  txt = (structOk&&countOk&&(dataLevel===null||dataLevel==='ok'))
       ? '结构、行数'+(d?'、明细':'')+'都一致'
-      : `结构${structOk?'一致':'有差异'} · 行数${countOk?'一致':'不一致'}`+(d?` · 明细${dataOk?'一致':'有差异'}`:'');
+      : `结构${structOk?'一致':'有差异'} · 行数${countOk?'一致':'不一致'}`+
+        (d?` · 明细${dataLevel==='ok'?'一致':(dataLevel==='warn'?'有风险/待确认':'有差异')}`:'');
   q('#ot-verdict').innerHTML = '<div class="verdict '+lvl+'"><b>'+esc(txt)+'</b>'+
     esc(R.table.a)+'（'+esc(R.cluster.a)+'） vs '+esc(R.table.b)+'（'+esc(R.cluster.b)+'）<br>'+
     esc(R.note||'')+(next.length?'<br>下一步：'+esc(next.join('；')):'')+'</div>';
@@ -1543,7 +1604,7 @@ async function runTableCompare(){
   showOt(cs.only_a||cs.only_b||cs.type_diff ? 'only_a' : (d&&d.stats.diff_cells ? 'diffs' : 'type_diff'));
   q('#ot-info').textContent = `字段 ${cs.a}/${cs.b} · 行数 ${ct.a.toLocaleString()}/${ct.b.toLocaleString()}`+
     (d?` · 差异 ${d.stats.diff_cells} 处`:'');
-  say('完成 · '+txt, lvl==='ok'?'ok':'err');
+  say('完成 · '+txt, lvl==='ok'?'ok':(lvl==='warn'?'warn':'err'));
 }
 function showOt(key){
   const R = ST.ot; if(!R) return;
@@ -1557,7 +1618,7 @@ function showOt(key){
       (C.type_diff||[]).map(c=>[c.name, c.type_a, c.type_b, c.nullable_a, c.nullable_b, c.kind]));
   } else if(key==='diffs' && d){
     render('ot', ['主键','字段','A 值','B 值'],
-      (d.diffs||[]).map(x=>[x.key, x.column, x.a, x.b]));
+      (d.diffs||[]).map(x=>[x.key, x.col??x.column, x.a, x.b]));
   } else if(key==='d_only_a' && d){
     render('ot', ['仅 A 侧有的主键'], (d.only_a||[]).map(k=>[k]));
   } else if(key==='d_only_b' && d){
@@ -1589,7 +1650,7 @@ async function exportTableCompare(){
   };
   if(d){
     sheets['明细差异'] = [['主键','字段','A 值','B 值'],
-      (d.diffs||[]).map(x=>[x.key,x.column,x.a,x.b])];
+      (d.diffs||[]).map(x=>[x.key,x.col??x.column,x.a,x.b])];
     sheets['排查日志'] = [['级别','主键','字段','出错原因','说明'],
       (d.logs||[]).map(l=>[l.level,l.key,l.column,l.reason,l.detail])];
     sheets['单边主键'] = [['只在哪边','主键'],
@@ -1612,9 +1673,14 @@ function pbFill(){
 qa('.subnav').forEach(nv=>{
   nv.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     nv.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+    nv.querySelectorAll('button').forEach(x=>x.tabIndex=x===b?0:-1);
+    nv.querySelectorAll('button').forEach(x=>
+      x.setAttribute('aria-selected', String(x===b)));
     const scope = nv.parentElement;
     scope.querySelectorAll(':scope > .sub').forEach(s=>
       s.classList.toggle('on', s.id==='s-'+b.dataset.s));
+    scope.querySelectorAll(':scope > .sub').forEach(s=>
+      s.setAttribute('aria-hidden', String(s.id!=='s-'+b.dataset.s)));
     if(scope.id==='p-t2x')
       q('#tx-wrap').style.display = b.dataset.s==='txt' ? '' : 'none';
   });
@@ -1839,6 +1905,11 @@ async function runDataCmp(){
   q('#pb-data-stats').innerHTML = statHtml([
     ['A 行数', s.rows_a, 'a'], ['B 行数', s.rows_b, 'a'],
     ['匹配行对', s.matched, 'g'],
+    ['A 重复主键组', s.duplicate_keys_a||0, s.duplicate_keys_a?'w':'g'],
+    ['B 重复主键组', s.duplicate_keys_b||0, s.duplicate_keys_b?'w':'g'],
+    ['近似配对组', s.approximate_groups||0, s.approximate_groups?'w':'g'],
+    ['仅 A 字段', (s.only_cols_a||[]).length, (s.only_cols_a||[]).length?'e':'g'],
+    ['仅 B 字段', (s.only_cols_b||[]).length, (s.only_cols_b||[]).length?'e':'g'],
     ['仅 A 有', s.only_a, s.only_a?'e':'g', 'only_a'],
     ['仅 B 有', s.only_b, s.only_b?'e':'g', 'only_b'],
     ['字段差异', s.diff_cells, s.diff_cells?'e':'g', 'diffs'],
@@ -1858,7 +1929,7 @@ async function runDataCmp(){
     else if(st) q('#pb-archive-slice').value = '自 '+st;
     else q('#pb-archive-slice').value = new Date().toISOString().slice(0,10);
   }
-  say(v.text, v.level==='ok'?'ok':'err');
+  say(v.text, v.level==='ok'?'ok':(v.level==='warn'?'warn':'err'));
 }
 function showData(kind){
   const j = ST.data; if(!j) return;
@@ -1884,10 +1955,12 @@ async function exportProbeLog(){
   try{
     const r = await post('/api/sql/export-log', {
       logs:j.logs, diffs:j.diffs, stats:j.stats, verdict:j.verdict,
+      logs_total:j.logs_total, diffs_total:j.diffs_total,
       executed:j.executed, name:'SQL排查日志_'+(q('#pb-nb').value||'新脚本')});
     if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
-    say(`已导出 ${r.file}（${r.size}）`,'ok');
-    if(confirm(`已生成 ${r.file}（${r.size}）\n\n现在下载？`))
+    say(`已导出 ${r.file}（${r.size}）`,r.truncated?'warn':'ok');
+    if(confirm(`已生成 ${r.file}（${r.size}）`+
+      (r.warning?`\n\n⚠️ ${r.warning}`:'')+'\n\n现在下载？'))
       location.href='/download/'+encodeURIComponent(r.file);
   } finally { busy(false); }
 }
@@ -2012,7 +2085,7 @@ async function mpDiscover(){
 }
 
 async function mpGroups(){
-  const r=await (await fetch('/api/mapping/groups')).json();
+  const r=await requestJson('/api/mapping/groups');
   if(!r.ok) return say(r.msg,'err');
   const sel=q('#mp-group'), keep=sel.value;
   sel.innerHTML=r.groups.length
@@ -2087,8 +2160,8 @@ async function xdUpload(){
   const fd=new FormData(); fd.append('file_a',fa); fd.append('file_b',fb);
   busy(true); say('上传并读取列名…');
   try{
-    const r=await (await fetch('/api/xdiff/upload',{method:'POST',
-      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    const r=await requestJson('/api/xdiff/upload',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd});
     if(!r.ok){ say(r.msg,'err'); q('#xd-cols').innerHTML='<div class="warnbox">'+esc(r.msg)+'</div>'; return; }
     ST.xd=r;
     q('#xd-up').textContent=`A ${r.rows_a} 行 / B ${r.rows_b} 行，共有列 ${r.common.length} 个`;
@@ -2133,6 +2206,7 @@ async function xdRun(){
     ['配上的行对',s.matched,'g'],
     ['唯一主键',s.unique_keys],
     ['重复主键',s.dup_keys, s.dup_keys?'w':''],
+    ['近似配对组',s.approximate_groups||0, s.approximate_groups?'w':'g'],
     ['仅 A 有',s.truly_only_a, s.truly_only_a?'e':''],
     ['仅 B 有',s.truly_only_b, s.truly_only_b?'e':''],
     ['重复组未配上 A',s.dup_unmatched_a, s.dup_unmatched_a?'w':''],
@@ -2140,9 +2214,10 @@ async function xdRun(){
     ['字段值差异',s.diff_cells, s.diff_cells?'e':'g'],
   ])+'</div>';
   const keys=s.keys;
+  const preview=j.preview||{};
   let html='';
   if(j.diffs.length){
-    html+='<h4>字段值差异（前 '+j.diffs.length+' 条）</h4><div class="tablewrap"><table>'+
+    html+='<h4>字段值差异（预览 '+j.diffs.length+' / 总 '+(preview.diffs_total??s.diff_cells)+' 条）</h4><div class="tablewrap"><table>'+
       '<thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+
       '<th>列名</th><th>A 的值</th><th>B 的值</th><th>A 行</th><th>B 行</th></tr></thead><tbody>'+
       j.diffs.map(d=>'<tr>'+keys.map(k=>'<td>'+esc(d.key[k])+'</td>').join('')+
@@ -2153,7 +2228,8 @@ async function xdRun(){
   }
   for(const [side,items,label] of [['a',j.only_a,'仅 A 有'],['b',j.only_b,'仅 B 有']]){
     if(!items.length) continue;
-    html+='<h4>'+label+'（'+items.length+' 行）</h4><div class="tablewrap"><table>'+
+    const total=side==='a'?(preview.only_a_total??s.only_a):(preview.only_b_total??s.only_b);
+    html+='<h4>'+label+'（预览 '+items.length+' / 总 '+total+' 行）</h4><div class="tablewrap"><table>'+
       '<thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+
       '<th>情况</th><th>行号</th>'+s.cmp_cols.slice(0,8).map(c=>'<th>'+esc(c)+'</th>').join('')+
       '</tr></thead><tbody>'+
@@ -2164,16 +2240,16 @@ async function xdRun(){
         '</tr>').join('')+'</tbody></table></div>';
   }
   q('#xd-out').innerHTML=html;
-  q('#xd-info').textContent=`比了 ${s.cmp_cols.length} 个共有列`;
-  say('比对完成 · '+v.text, v.level==='ok'?'ok':'err');
+  q('#xd-info').textContent=`比了 ${s.cmp_cols.length} 个共有列；页面仅显示预览，导出时会重跑并标注完整性`;
+  say('比对完成 · '+v.text, v.level==='ok'?'ok':(v.level==='warn'?'warn':'err'));
 }
 
 async function xdExport(){
   if(!ST.xd) return alert('请先上传两个文件');
   const j=await runJob('/api/xdiff/export', xdBody(), q('#xd-run'), '导出中…');
   if(!j) return;
-  say(`已导出 ${j.file}（${j.size}）`,'ok');
-  alert(`报告已保存：\n${j.path}`);
+  say(`已导出 ${j.file}（${j.size}）`,j.truncated?'warn':'ok');
+  alert(`报告已保存：\n${j.path}`+(j.warning?`\n\n⚠️ ${j.warning}`:''));
 }
 
 /* ══ Excel 转换 ══ */
@@ -2184,8 +2260,8 @@ async function probeSheets(prefix){
   const fd = new FormData(); fd.append('file', f);
   busy(true); say('探测工作表…');
   try{
-    const r = await (await fetch('/api/excel/sheets',{method:'POST',
-      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    const r = await requestJson('/api/excel/sheets',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd});
     if(!r.ok){ say(r.msg,'err'); q('#'+prefix+'-probe').innerHTML =
       '<div class="warnbox">'+esc(r.msg)+'</div>'; return; }
     const sel = q('#'+prefix+'-sheet');
@@ -2216,8 +2292,8 @@ async function runExcel2Insert(){
   const btn=q('#ci-run'), old=btn.textContent;
   btn.disabled=true; btn.textContent='⏳ 生成中…'; busy(true);
   try{
-    const r = await (await fetch('/api/excel2insert',{method:'POST',
-      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    const r = await requestJson('/api/excel2insert',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd});
     if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
     q('#ci-stats').innerHTML = statHtml([
       ['目标表', esc(r.table), 'a'], ['数据行', r.row_count, 'g'],
@@ -2230,12 +2306,15 @@ async function runExcel2Insert(){
     if(r.unmatched_header.length) warn +=
       `<div class="warnbox"><b>Excel 有、DDL 没有的表头（${r.unmatched_header.length} 个）</b>：
        ${r.unmatched_header.map(esc).join('、')}<br>这些列被忽略了，请确认是否表头写错。</div>`;
+    if(r.warnings && r.warnings.length) warn +=
+      `<div class="warnbox"><b>源工作簿警告</b><br>${r.warnings.map(esc).join('<br>')}</div>`;
     q('#ci-warn').innerHTML = warn;
     q('#ci-out').style.display='block';
     q('#ci-sql').value = r.preview + (r.sql_truncated ? '\n\n-- …（预览截断，完整内容见下载的 .sql 文件）' : '');
     q('#ci-file-info').innerHTML =
       `已保存 <a href="/download/${encodeURIComponent(r.file)}">${esc(r.file)}</a>（${r.size}）`;
-    say(`生成完成 · ${r.row_count} 行 / ${r.stmt_count} 条语句`,'ok');
+    say(`生成完成 · ${r.row_count} 行 / ${r.stmt_count} 条语句`,
+      r.warnings?.length?'warn':'ok');
   } finally { busy(false); btn.disabled=false; btn.textContent=old; }
 }
 async function runExcel2Doc(){
@@ -2250,8 +2329,8 @@ async function runExcel2Doc(){
   const btn=q('#cd-run'), old=btn.textContent;
   btn.disabled=true; btn.textContent='⏳ 转换中…'; busy(true);
   try{
-    const r = await (await fetch('/api/excel2doc',{method:'POST',
-      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    const r = await requestJson('/api/excel2doc',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd});
     if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
     let extra = '';
     if(r.warnings && r.warnings.length)
@@ -2274,8 +2353,8 @@ async function runImg2Rows(){
   const btn=q('#im-run'), old=btn.textContent;
   btn.disabled=true; btn.textContent='⏳ 识别中…'; busy(true); say('调用系统 OCR…');
   try{
-    const r = await (await fetch('/api/image2rows',{method:'POST',
-      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
+    const r = await requestJson('/api/image2rows',{method:'POST',
+      headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd});
     if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
     ST.imgRows = r.rows;
     const head = q('#im-head').checked && r.rows.length>0;
@@ -2349,15 +2428,124 @@ async function doExport(sheets, name){
 
 /* ── 产物文件 ── */
 async function loadFiles(){
-  const r = await (await fetch('/api/files')).json();
-  if(!r.ok) return;
   const t=q('#fl-table'), e=q('#fl-empty');
+  e.style.display='block'; e.textContent='正在加载产物列表…';
+  const r = await requestJson('/api/files');
+  if(!r.ok){
+    t.style.display='none'; e.textContent=r.msg; say(r.msg,'err'); return;
+  }
   if(!r.items.length){ t.style.display='none'; e.style.display='block'; e.textContent='产物目录还没有文件'; return; }
   e.style.display='none'; t.style.display='table';
   t.innerHTML = '<thead><tr><th>文件名</th><th>大小</th><th>时间</th></tr></thead><tbody>' +
     r.items.map(f=>`<tr><td><a href="/download/${encodeURIComponent(f.name)}">${esc(f.name)}</a></td>
       <td class="num">${f.size}</td><td>${f.time}</td></tr>`).join('') + '</tbody>';
 }
+
+function ensureControlNames(root=document){
+  const controls=[];
+  if(root.matches?.('input,select,textarea')) controls.push(root);
+  controls.push(...(root.querySelectorAll?.('input,select,textarea')||[]));
+  controls.forEach(el=>{
+    if(el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.labels?.length)
+      return;
+    let text='';
+    const prev=el.previousElementSibling;
+    if(prev?.tagName==='LABEL') text=prev.textContent.trim();
+    if(!text){
+      const direct=[...(el.parentElement?.children||[])].filter(x=>
+        x.tagName==='LABEL' && (x.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING));
+      if(direct.length) text=direct.at(-1).textContent.trim();
+    }
+    text=text || el.getAttribute('title') || el.getAttribute('placeholder') ||
+      (el.id ? el.id.replace(/[-_]+/g,' ') : '表单字段');
+    el.setAttribute('aria-label', text.replace(/\s+/g,' ').trim());
+  });
+}
+function enhanceClickTargets(root=document){
+  const selector='[onclick]:not(button):not(a):not(input):not(select):not(textarea),.stat.click';
+  const nodes=[];
+  if(root.matches?.(selector)) nodes.push(root);
+  nodes.push(...(root.querySelectorAll?.(selector)||[]));
+  nodes.forEach(el=>{
+    if(!el.hasAttribute('role')) el.setAttribute('role','button');
+    if(!el.hasAttribute('tabindex')) el.tabIndex=0;
+    if(!el.getAttribute('aria-label'))
+      el.setAttribute('aria-label',(el.textContent||'打开详情').replace(/\s+/g,' ').trim());
+    if(el.matches('.stat.click'))
+      el.setAttribute('aria-pressed',String(el.classList.contains('on')));
+    if(el.matches('.seg .hd')){
+      const pre=el.parentElement?.querySelector('pre');
+      if(pre){
+        pre.id=pre.id||`expand-panel-${Math.random().toString(36).slice(2)}`;
+        el.setAttribute('aria-controls',pre.id);
+      }
+      el.setAttribute('aria-expanded',String(el.parentElement?.classList.contains('open')));
+    }
+  });
+}
+function initAccessibility(){
+  const topTabs=qa('nav button[data-p]');
+  topTabs.forEach((b,i)=>{
+    b.id=b.id||'main-tab-'+b.dataset.p;
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-controls','p-'+b.dataset.p);
+    b.setAttribute('aria-selected',String(b.classList.contains('on')));
+    b.tabIndex=b.classList.contains('on')?0:-1;
+    const panel=q('#p-'+b.dataset.p);
+    if(panel){
+      panel.setAttribute('role','tabpanel');
+      panel.setAttribute('aria-labelledby',b.id);
+      panel.setAttribute('aria-hidden',String(!panel.classList.contains('on')));
+    }
+  });
+  qa('.subnav').forEach((nv,n)=>{
+    nv.setAttribute('role','tablist');
+    nv.setAttribute('aria-label','页面内功能');
+    const scope=nv.parentElement;
+    nv.querySelectorAll('button[data-s]').forEach((b,i)=>{
+      b.id=b.id||`sub-tab-${n}-${i}`;
+      b.setAttribute('role','tab');
+      b.setAttribute('aria-controls','s-'+b.dataset.s);
+      b.setAttribute('aria-selected',String(b.classList.contains('on')));
+      b.tabIndex=b.classList.contains('on')?0:-1;
+      const panel=scope.querySelector(':scope > #s-'+CSS.escape(b.dataset.s));
+      if(panel){
+        panel.setAttribute('role','tabpanel');
+        panel.setAttribute('aria-labelledby',b.id);
+        panel.setAttribute('aria-hidden',String(!panel.classList.contains('on')));
+      }
+    });
+  });
+  ensureControlNames();
+  enhanceClickTargets();
+}
+document.addEventListener('keydown',event=>{
+  const target=event.target;
+  if(target?.getAttribute?.('role')==='button' &&
+      !target.matches('button,a,input,select,textarea') &&
+      (event.key==='Enter'||event.key===' ')){
+    event.preventDefault(); target.click(); return;
+  }
+  if(target?.getAttribute?.('role')==='tab' &&
+      (event.key==='ArrowLeft'||event.key==='ArrowRight')){
+    const tabs=[...target.closest('[role=tablist]').querySelectorAll('[role=tab]')];
+    const step=event.key==='ArrowRight'?1:-1;
+    const next=tabs[(tabs.indexOf(target)+step+tabs.length)%tabs.length];
+    event.preventDefault(); next.focus(); next.click();
+  }
+});
+document.addEventListener('click',event=>setTimeout(()=>{
+  const head=event.target.closest?.('.seg .hd');
+  if(head) head.setAttribute('aria-expanded',
+    String(head.parentElement?.classList.contains('open')));
+  const stats=event.target.closest?.('.stats');
+  if(stats) stats.querySelectorAll('.stat.click').forEach(el=>
+    el.setAttribute('aria-pressed',String(el.classList.contains('on'))));
+},0));
+new MutationObserver(changes=>changes.forEach(change=>change.addedNodes.forEach(node=>{
+  if(node.nodeType===Node.ELEMENT_NODE){ ensureControlNames(node); enhanceClickTargets(node); }
+}))).observe(document.body,{childList:true,subtree:true});
+initAccessibility();
 </script>
 </body>
 </html>
