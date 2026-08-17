@@ -1,4 +1,7 @@
+import tempfile
+import time
 import unittest
+from pathlib import Path
 
 import app
 
@@ -56,6 +59,39 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual("high", response.json["confidence"])
         self.assertIn("joins", fake.evidence)
         self.assertIn("static", response.json)
+
+    def test_completed_job_is_consumed_after_poll(self):
+        jid = "completed-job-test"
+        with app.JOBS_LOCK:
+            app.JOBS[jid] = {
+                "done": True,
+                "msg": "完成",
+                "result": {"value": 42},
+                "error": None,
+                "finished_at": time.time(),
+            }
+        response = self.client.get(f"/api/job/{jid}")
+        self.assertTrue(response.json["ok"])
+        self.assertEqual(42, response.json["value"])
+        with app.JOBS_LOCK:
+            self.assertNotIn(jid, app.JOBS)
+        self.assertFalse(self.client.get(f"/api/job/{jid}").json["ok"])
+
+    def test_clean_comparison_can_update_archive_scope(self):
+        original_data_dir = app.CLIENT.data_dir
+        with tempfile.TemporaryDirectory() as tmp:
+            app.CLIENT.data_dir = Path(tmp)
+            try:
+                response = self.client.post("/api/sql/accumulate-diffs", json={
+                    "name": "clean-check",
+                    "diffs": [],
+                    "time_slice": "复核轮次",
+                    "pks_in_scope": ["1"],
+                }, headers=self.headers)
+            finally:
+                app.CLIENT.data_dir = original_data_dir
+        self.assertTrue(response.json["ok"])
+        self.assertEqual(0, response.json["total"])
 
 
 if __name__ == "__main__":
