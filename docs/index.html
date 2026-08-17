@@ -3,109 +3,176 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>数据库查询与数据核对集成工具｜实习项目</title>
-  <meta name="description" content="基于实习工作场景开发的本地数据工具，整合 JDBC 查询、SQL 排查、数据比较、Excel 转换与 AI 辅助分析。">
-  <meta property="og:title" content="数据库查询与数据核对集成工具">
-  <meta property="og:description" content="Python · Flask · Java/JDBC · Excel · AI｜本地数据工具实习项目">
+  <title>Matrix AI 数据工具箱｜SQL 排查与数据核对</title>
+  <meta name="description" content="把 SQL 排查、数据库与文件核对、Excel/PDF/Word 转换集中到一个本地优先的数据工作台。">
+  <meta name="theme-color" content="#0b3b2c">
+  <meta property="og:title" content="Matrix AI 数据工具箱">
+  <meta property="og:description" content="从 SQL 差异到可验证的业务结论｜本地优先的数据排查工作台">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://yanjiang2123.github.io/matrix-ai-toolbox/">
   <meta property="og:image" content="https://yanjiang2123.github.io/matrix-ai-toolbox/og-simple.png">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a2e22'/%3E%3Cpath d='M14 45V19h8l10 14 10-14h8v26h-8V31L32 45 22 31v14z' fill='%23b9e768'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="返回项目首页"><span class="brand-mark">M</span><span>数据工具项目</span></a>
+    <a class="brand" href="#top" aria-label="返回 Matrix AI 数据工具箱首页">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <span><b>Matrix AI</b><small>数据工具箱</small></span>
+    </a>
     <nav aria-label="主要导航">
-      <a href="#background">项目背景</a>
-      <a href="#features">核心功能</a>
+      <a href="#workflow">排查流程</a>
+      <a href="#features">工具能力</a>
+      <a href="#verification">测试验证</a>
       <a href="#architecture">技术实现</a>
-      <a href="#summary">项目总结</a>
       <a class="nav-github" href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
     </nav>
   </header>
 
-  <main id="top">
-    <section class="hero wrap">
+  <main id="main">
+    <section class="hero wrap" id="top">
       <div class="hero-copy">
-        <p class="kicker"><span></span>实习项目 · 本地数据工作台</p>
-        <h1>数据库查询与<br>数据核对集成工具</h1>
-        <p class="lede">面向实习工作中的数据库查询、SQL 排查和 Excel 核对需求，将分散的重复操作整合为一个本地 Web 工作台，并加入基于代码证据的 AI 辅助分析。</p>
+        <p class="kicker"><span></span>本地优先 · 证据驱动 · 人工确认</p>
+        <h1>让 <em>SQL 差异</em>，<br>变成可验证的<br>业务结论。</h1>
+        <p class="lede">Matrix AI 数据工具箱把 SQL 排查、数据库与文件核对、格式转换集中到一个本地 Web 工作台。先由规则提取 JOIN、过滤、聚合和主键证据，再按需下钻数据；AI 只作可选解释，不替代验证。</p>
         <div class="actions">
-          <a class="primary" href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">查看 GitHub 源码 ↗</a>
-          <a class="secondary" href="#features">了解核心功能</a>
+          <a class="primary" href="https://github.com/yanjiang2123/matrix-ai-toolbox#readme" target="_blank" rel="noopener noreferrer">查看源码与启动说明 ↗</a>
+          <a class="secondary" href="#workflow">查看 SQL 排查流程</a>
         </div>
-        <dl class="hero-facts">
-          <div><dt>技术栈</dt><dd>Python / Flask / Java JDBC</dd></div>
-          <div><dt>主要职责</dt><dd>需求拆解、功能整合、调试验证、版本交付</dd></div>
-          <div><dt>项目形态</dt><dd>本地 Web 工具</dd></div>
-        </dl>
+        <ul class="hero-signals" aria-label="当前版本概览">
+          <li><strong>11</strong><span>个本地工作页</span></li>
+          <li><strong>4</strong><span>层排查链路</span></li>
+          <li><strong>73</strong><span>项自动化回归</span></li>
+        </ul>
       </div>
 
-      <aside class="runtime-card" aria-label="项目运行方式说明">
-        <div class="runtime-head"><span class="status-dot"></span><strong>完整工具在本地运行</strong></div>
-        <p>公开网站用于介绍项目。数据库连接、文件处理和 AI 调用均由使用者在自己的电脑上启动工具后完成。</p>
-        <ul>
-          <li><span>01</span><div><b>数据库</b><small>运行时配置 JDBC 连接</small></div></li>
-          <li><span>02</span><div><b>SQL</b><small>静态证据分析与只读检查</small></div></li>
-          <li><span>03</span><div><b>数据文件</b><small>Excel / CSV 比较与转换</small></div></li>
-          <li><span>04</span><div><b>AI</b><small>可选接入兼容模型接口</small></div></li>
-        </ul>
-        <div class="runtime-note">在线页面用于项目介绍，完整功能在本地运行</div>
+      <aside class="diagnostic-card" aria-label="SQL 业务排查路径">
+        <div class="diagnostic-head">
+          <div><span class="status-dot"></span><strong>规则证据层已就绪</strong></div>
+          <small>LOCAL ONLY</small>
+        </div>
+        <p class="diagnostic-intro">一条差异结论，需要沿着同口径、SQL 逻辑、主键明细和执行证据逐层验证。</p>
+        <ol>
+          <li><span>01</span><div><b>锁定同一口径</b><small>时间窗 · WHERE · 维度 · 指标定义</small></div><i>完成</i></li>
+          <li><span>02</span><div><b>比较 SQL 逻辑</b><small>表字段 · JOIN · GROUP BY · 聚合</small></div><i>2 风险</i></li>
+          <li><span>03</span><div><b>按主键核对明细</b><small>重复键 · 仅 A/B · NULL · 值差异</small></div><i>待验证</i></li>
+          <li><span>04</span><div><b>输出排查证据</b><small>实际 SQL · 参数 · 日志 · 差异报告</small></div><i>可导出</i></li>
+        </ol>
+        <div class="diagnostic-note"><b>不会把抽样或不完整分片包装成“全量一致”。</b><span>结论边界会与结果一起展示。</span></div>
       </aside>
     </section>
 
+    <section class="proof-strip wrap" aria-label="项目特点">
+      <div><span>01</span><p><b>本地运行</b><small>数据库与文件不经过公开站点</small></p></div>
+      <div><span>02</span><p><b>只读优先</b><small>查询执行前经过本地安全检查</small></p></div>
+      <div><span>03</span><p><b>证据可追溯</b><small>保留实际 SQL、范围、参数和差异</small></p></div>
+      <div><span>04</span><p><b>边界明确</b><small>抽样、截断和降级均主动告警</small></p></div>
+    </section>
+
     <section class="tool-preview wrap" aria-labelledby="preview-title">
-      <div class="preview-heading">
-        <div><p class="section-label">运行界面</p><h2 id="preview-title">本地工具的实际运行界面。</h2></div>
-        <p>截图展示运行时数据库连接页面，使用通用字段和占位配置说明连接流程。</p>
+      <div class="section-heading">
+        <div>
+          <p class="section-label">真实运行界面</p>
+          <h2 id="preview-title">先看证据，再解释影响。</h2>
+        </div>
+        <p>最新版 SQL 排查工作台可在不连库时比较新老脚本，并直接指出可能导致丢数或倍乘的逻辑变化。</p>
       </div>
       <figure>
-        <img src="toolbox-ui.png" alt="Matrix 数据工具箱的本地 Web 运行界面，展示数据库运行时连接配置">
-        <figcaption><span>本地 Web 工作台</span><span>运行时连接</span><span>项目演示</span></figcaption>
+        <img src="toolbox-ui.png" width="1425" height="891" loading="lazy" decoding="async" alt="Matrix AI 数据工具箱 SQL 排查工作台，识别出 JOIN 类型和关联条件两项风险">
+        <figcaption>
+          <span>旧脚本 vs 新脚本</span>
+          <span>LEFT → INNER 风险</span>
+          <span>关联条件变化</span>
+          <span>验证建议</span>
+        </figcaption>
       </figure>
     </section>
 
-    <section class="context wrap" id="background">
-      <article>
-        <p class="section-label">项目背景</p>
-        <h2>从真实的重复工作出发。</h2>
-        <p>日常数据排查需要在数据库客户端、SQL 脚本和 Excel 文件之间反复切换。表数据量统计、结果核对和格式转换步骤重复，问题定位也依赖人工经验。</p>
-        <p>项目目标不是重做一个数据库客户端，而是把高频排查流程放到同一个本地页面中，降低切换和重复录入成本。</p>
-      </article>
-      <article class="responsibility">
-        <p class="section-label">个人职责</p>
-        <h2>负责从需求到可演示交付。</h2>
-        <p>项目使用 Qoder 辅助生成和修改部分代码。个人工作重点是整理实际需求、设计操作流程、验证并修改生成代码、整合模块、处理运行问题，以及完成可运行版本的整理与交付。</p>
-        <div class="responsibility-tags"><span>需求拆解</span><span>流程设计</span><span>代码验证</span><span>模块整合</span><span>调试测试</span><span>版本交付</span></div>
-      </article>
+    <section class="workflow wrap" id="workflow" aria-labelledby="workflow-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-label">业务排查流程</p>
+          <h2 id="workflow-title">不是字符串 diff，<br>是一条完整核对链路。</h2>
+        </div>
+        <p>流程来自日常指标核对、报表迁移与数据链路追溯场景。每一步都给出下一步验证方向，而不是只展示文本变化。</p>
+      </div>
+      <div class="workflow-grid">
+        <ol class="workflow-steps">
+          <li><span>01</span><div><h3>先统一范围与口径</h3><p>固定同一时间窗，核对 WHERE、机构、状态、维度和指标定义，避免把配置差异误判成数据问题。</p></div></li>
+          <li><span>02</span><div><h3>再比较结构与逻辑</h3><p>识别表源、字段映射、JOIN 类型与条件、过滤、分组和聚合粒度变化，并生成对应验证建议。</p></div></li>
+          <li><span>03</span><div><h3>从总量下钻到明细</h3><p>先比较字段和 COUNT，再按主键稳定对齐；单独识别重复键、额外行、仅 A、仅 B、NULL 与值差异。</p></div></li>
+          <li><span>04</span><div><h3>沿链路留存证据</h3><p>记录实际执行 SQL、参数、分片范围、结论和下一步；结果可导出，便于复核和继续追溯。</p></div></li>
+        </ol>
+        <aside class="anti-green">
+          <p class="section-label light">反“假绿”门禁</p>
+          <h3>这些情况不会再被判成“完全一致”</h3>
+          <ul>
+            <li><b>重复主键</b><span>顺序变化、额外重复行与超大重复组分别处理</span></li>
+            <li><b>字段结构变化</b><span>重复表头、缺失字段、只有主键可比均会阻止假结论</span></li>
+            <li><b>复合键与空值</b><span>保留键边界，并区分 NULL、空字符串和字面量 NULL</span></li>
+            <li><b>抽样与漏片</b><span>抽样仅给阶段性判断；全量取数不完整时主动降级</span></li>
+          </ul>
+          <div class="anti-green-foot"><strong>结论可信度</strong><span>规则证据 + 数据完整性 + 人工确认</span></div>
+        </aside>
+      </div>
     </section>
 
-    <section class="section wrap" id="features">
+    <section class="section wrap" id="features" aria-labelledby="features-title">
       <div class="section-heading">
-        <div><p class="section-label">已实现功能</p><h2>围绕查询、排查、核对和转换组织能力。</h2></div>
-        <p>以下能力均能在公开代码中找到对应模块；依赖外部环境的功能会明确标注运行条件。</p>
+        <div>
+          <p class="section-label">工具能力</p>
+          <h2 id="features-title">围绕查询、排查、核对和转换组织。</h2>
+        </div>
+        <p>公开页面只负责介绍；完整功能在使用者电脑上的 127.0.0.1 本地服务中运行。</p>
       </div>
       <div class="feature-grid">
-        <article><span class="feature-no">01</span><h3>只读查询与表统计</h3><p>运行时填写 JDBC URL、驱动类和驱动 JAR；执行只读 SQL，并读取表清单、元数据行数或精确 COUNT。</p><div><b>JDBC</b><b>只读检查</b><b>表行数统计</b></div></article>
-        <article><span class="feature-no">02</span><h3>SQL 拆分与逻辑排查</h3><p>拆分长 SQL，对比表、字段、JOIN、过滤、分组与聚合口径，并给出重复键、丢数和倍乘的验证建议。</p><div><b>SQL Parser</b><b>差异证据</b><b>验证建议</b></div></article>
-        <article><span class="feature-no">03</span><h3>AI 辅助分析</h3><p>在本地证据基础上调用兼容模型接口，区分直接证据、可能影响和待验证假设；生成内容不会自动执行。</p><div><b>可选能力</b><b>人工确认</b><b>安全复检</b></div></article>
-        <article><span class="feature-no">04</span><h3>数据库数据比较</h3><p>比较库表清单、表行数、字段和按主键对齐的明细；支持稳定抽样、按业务时间全量分片，以及环境间表名映射。</p><div><b>库级对比</b><b>单表对比</b><b>全量分片</b></div></article>
-        <article><span class="feature-no">05</span><h3>Excel / CSV 文件核对</h3><p>按主键逐格比较文件，定位新增、缺失和字段不一致；重复键数据在组内进行匹配，减少误报。</p><div><b>openpyxl</b><b>主键比较</b><b>差异导出</b></div></article>
-        <article><span class="feature-no">06</span><h3>结构化文件转换</h3><p>支持 Excel 转 INSERT SQL、PDF、Word，以及文本或图片转 Excel；OCR 可在 Windows 10/11 与 macOS 本地运行。</p><div><b>INSERT</b><b>PDF / Word</b><b>OCR → Excel</b></div></article>
+        <article><span class="feature-no">01 / SQL</span><h3>SQL 逻辑排查</h3><p>对比表、字段、JOIN、WHERE、GROUP BY 与聚合口径；长 SQL 还可拆分、提取依赖表并生成辅助排查 SQL。</p><div><b>静态解析</b><b>规则证据</b><b>验证建议</b></div></article>
+        <article><span class="feature-no">02 / DATA</span><h3>数据库分层核对</h3><p>覆盖库清单、表行数、字段结构与主键明细。稳定抽样只给阶段性判断，业务时间分片完整后才形成全量结论。</p><div><b>库级对比</b><b>主键明细</b><b>完整性门禁</b></div></article>
+        <article><span class="feature-no">03 / FILE</span><h3>文件逐格比较</h3><p>支持 XLSX、XLSM、CSV、TXT、TSV；重复键先匹配完全相同行，再对剩余记录进行有界配对，并标注近似结果。</p><div><b>重复键</b><b>仅 A/B</b><b>差异报告</b></div></article>
+        <article><span class="feature-no">04 / CONVERT</span><h3>结构化文件转换</h3><p>文本全量导出 Excel；保护前导零、长 ID 与高精度数值。Excel 可转 INSERT、分列组 PDF 和 Word。</p><div><b>Excel</b><b>INSERT</b><b>PDF / Word</b></div></article>
+        <article><span class="feature-no">05 / OCR</span><h3>图片表格识别</h3><p>Windows 10/11 与 macOS 可调用本地 OCR。空白、低清、旋转或结构不确定时会明确告警，导出前要求逐格复核。</p><div><b>本地 OCR</b><b>结构告警</b><b>人工复核</b></div></article>
+        <article><span class="feature-no">06 / AI</span><h3>AI 辅助与只读安全</h3><p>可基于脱敏表结构草拟单条只读 SQL，或解释规则证据；生成内容不会自动执行，仍需通过安全复检和人工确认。</p><div><b>可选模型</b><b>不自动执行</b><b>只读复检</b></div></article>
       </div>
     </section>
 
-    <section class="architecture wrap" id="architecture">
+    <section class="verification wrap" id="verification" aria-labelledby="verification-title">
+      <div class="verification-copy">
+        <p class="section-label light">严格验证 · 2026-08-17</p>
+        <h2 id="verification-title">不是“能打开”，<br>而是经反例验证后再交付。</h2>
+        <p>本轮测试专门构造重复主键、复合键碰撞、NULL/空串、分片漏数、超宽表、高精度数值和窄屏交互等极端场景；发现问题后逐项修复并重新回归。</p>
+      </div>
+      <dl class="verification-metrics">
+        <div><dt>73 / 73</dt><dd>自动化回归</dd></div>
+        <div><dt>16 / 16</dt><dd>离线接口链路</dd></div>
+        <div><dt>18 / 18</dt><dd>定向反例门禁</dd></div>
+        <div><dt>55</dt><dd>页面 × 视口组合</dd></div>
+      </dl>
+      <div class="stress-list">
+        <div><strong>SQL 对比</strong><span>超大重复组采用有界匹配，避免平方级成本拖垮全量扫描。</span></div>
+        <div><strong>文本 → Excel</strong><span>5001 × 55 压测完整，高精度小数和前导零保持原值。</span></div>
+        <div><strong>Excel → PDF / Word</strong><span>55 列拆为可读列组，续页重复表头与首列用于对齐。</span></div>
+        <div><strong>响应式界面</strong><span>桌面到 320px 窄屏无内容横向越界，浏览器控制台 0 错误。</span></div>
+      </div>
+    </section>
+
+    <section class="architecture wrap" id="architecture" aria-labelledby="architecture-title">
       <div class="architecture-copy">
-        <p class="section-label light">技术实现</p>
-        <h2>页面负责操作，Flask 负责编排，专业模块完成处理。</h2>
-        <p>项目保持本地优先：浏览器只访问 127.0.0.1，Flask 接收操作请求，再调用数据库、SQL、Excel 或 AI 模块。外部模型是可选增强，不影响本地规则能力。</p>
+        <p class="section-label">技术实现</p>
+        <h2 id="architecture-title">页面负责编排，专业模块负责证据。</h2>
+        <p>浏览器只访问本地 Flask 服务。数据库查询通过 Java/JDBC 执行；SQL、文件和转换逻辑由独立模块完成；外部模型是可选增强，不影响本地规则能力。</p>
+        <ul>
+          <li>敏感配置只保存在当前进程内存</li>
+          <li>账号、密码与 SQL 不进入命令行参数</li>
+          <li>写接口需要当前页面会话令牌</li>
+        </ul>
       </div>
       <div class="flow" aria-label="项目技术架构">
         <div class="flow-main"><small>交互层</small><strong>浏览器界面</strong><span>Jinja2 + 原生 JavaScript</span></div>
         <i>↓</i>
-        <div class="flow-main accent"><small>编排层</small><strong>Flask 本地服务</strong><span>路由、令牌、任务状态、安全检查</span></div>
+        <div class="flow-main accent"><small>编排层</small><strong>Flask 本地服务</strong><span>路由 · 任务 · 会话令牌 · 安全检查</span></div>
         <i>↓</i>
         <div class="flow-modules">
           <div><small>查询</small><strong>Java / JDBC</strong></div>
@@ -116,39 +183,42 @@
       </div>
     </section>
 
-    <section class="section wrap">
-      <div class="section-heading compact">
-        <div><p class="section-label">关键实现</p><h2>面试中值得展开说明的技术点。</h2></div>
-      </div>
-      <div class="technical-grid">
-        <article><span>连接安全</span><h3>敏感配置不进入仓库</h3><p>数据库和 AI 配置通过前端运行时填写，只保存在当前进程内存。账号、密码与 SQL 通过标准输入传给 Java 查询器，避免进入命令行参数。</p></article>
-        <article><span>证据优先</span><h3>让 AI 基于解析结果推理</h3><p>先由本地解析器提取确定信息，再让模型解释语义影响。验证 SQL 仍需经过只读检查，且必须由使用者确认执行。</p></article>
-        <article><span>数据核对</span><h3>处理重复主键带来的误报</h3><p>Excel / CSV 比较支持按主键分组，并在重复键组内进行匹配，而不是简单按文件行号逐行比较。</p></article>
-        <article><span>交付验证</span><h3>可启动、可测试、可独立演示</h3><p>仓库包含 Windows 一键启动、依赖清单和覆盖核心路径的自动化测试，并提供示例配置与清晰的运行说明。</p></article>
-      </div>
+    <section class="project-story wrap" aria-label="项目背景与个人职责">
+      <article>
+        <p class="section-label">项目背景</p>
+        <h2>从真实、重复的数据排查工作出发。</h2>
+        <p>日常核对需要在数据库客户端、SQL 脚本和 Excel 文件之间反复切换。这个项目不试图重做数据库客户端，而是把高频排查动作和证据留存在同一条工作流里。</p>
+      </article>
+      <article>
+        <p class="section-label amber">个人职责与开发方式</p>
+        <h2>从需求拆解到可复测交付。</h2>
+        <p>借助 AI 编码工具协助部分实现；个人重点负责业务流程整理、交互设计、代码复核、异常反例构造、测试修复、模块整合和版本交付。</p>
+        <div class="responsibility-tags"><span>需求拆解</span><span>流程设计</span><span>代码复核</span><span>严格测试</span><span>问题修复</span><span>发布交付</span></div>
+      </article>
     </section>
 
-    <section class="summary wrap" id="summary">
+    <section class="summary wrap" id="boundaries">
       <div>
-        <p class="section-label light">项目总结</p>
-        <h2>完成了一个能够独立演示的工具原型。</h2>
-        <p>项目将多项分散操作整合到一个本地工作台，并完成运行验证、安全限制、依赖整理和演示版本交付。工具已在实习工作中实际运行，用于辅助数据库查询、SQL 排查、表数据量统计和 Excel 数据核对。</p>
-        <a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">在 GitHub 查看源码与运行说明 ↗</a>
+        <p class="section-label light">当前状态</p>
+        <h2>可独立运行、演示和继续验证的本地数据工作台。</h2>
+        <p>仓库包含 Windows 启动入口、配置示例、核心回归测试与项目说明。所有会影响结论可信度的抽样、截断和环境限制都会在界面中明确展示。</p>
+        <a href="https://github.com/yanjiang2123/matrix-ai-toolbox#readme" target="_blank" rel="noopener noreferrer">在 GitHub 查看运行说明 ↗</a>
       </div>
       <aside>
-        <h3>当前边界</h3>
+        <h3>已知边界</h3>
         <ul>
-          <li>数据库功能需要对应 JDBC 驱动与可用 JDK</li>
-          <li>AI 功能需要使用者提供兼容接口和模型配置</li>
-          <li>图片 OCR 支持 Windows 10/11 与 macOS，但结果仍需人工核对</li>
-          <li>数据库全量核对需要可用的业务时间字段；超大结果会明确标注预览与导出上限</li>
+          <li>真实数据库验证需要目标 JDK、JDBC 驱动、网络与只读凭据；公开版本未连接生产库测试</li>
+          <li>AI 功能需要使用者提供兼容接口和模型配置，且不会自动执行生成 SQL</li>
+          <li>图片 OCR 对低清、旋转或复杂合并单元格仍需人工核对</li>
+          <li>极长 PDF 单元格为保证分页会按上限展示并明确告警</li>
+          <li>旧版 .xls 需先另存为 .xlsx 后再进行文件比对</li>
         </ul>
       </aside>
     </section>
   </main>
 
   <footer class="footer wrap">
-    <div><strong>数据库查询与数据核对集成工具</strong><span>Python · Flask · Java/JDBC · Excel · AI</span></div>
+    <div><strong>Matrix AI 数据工具箱</strong><span>Python · Flask · Java/JDBC · SQL · Excel · AI</span></div>
     <div class="footer-links"><a href="https://github.com/yanjiang2123/matrix-ai-toolbox" target="_blank" rel="noopener noreferrer">GitHub 源码 ↗</a><a href="#top">返回顶部 ↑</a></div>
   </footer>
 </body>
