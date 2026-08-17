@@ -7,6 +7,7 @@
 :root{
   --bd:#dfe3e8; --bg:#f5f6f8; --fg:#1f2328; --mute:#666; --line:#eceef1;
   --pri:#2F5496; --pri-d:#24406f; --ok:#0a7d32; --err:#c0392b; --warn:#b26a00;
+  --footer-h:34px;
 }
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
@@ -20,6 +21,7 @@ header h1{margin:0;font-size:17px;font-weight:600}
 .env{font-size:12px;color:var(--ok)}
 .env.bad{color:var(--err)}
 header .right{margin-left:auto;display:flex;gap:8px}
+header .right .btn{flex:0 0 auto;white-space:nowrap}
 
 /* Tab */
 nav{background:#fff;border-bottom:1px solid var(--bd);padding:0 18px;display:flex;gap:2px;
@@ -29,7 +31,7 @@ nav button{border:0;background:none;padding:10px 16px;font-size:14px;cursor:poin
 nav button:hover{color:var(--fg)}
 nav button.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:600}
 
-main{padding:16px 18px 60px}
+main{padding:16px 18px calc(var(--footer-h) + 16px)}
 .page{display:none;scroll-margin-top:108px}
 .page.on{display:block}
 .hint{color:var(--mute);font-size:13px;margin:0 0 12px}
@@ -84,8 +86,10 @@ td.diffcell{background:#fdecea;color:#8c2018}
 
 /* 底部状态栏 */
 footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--bd);
-  padding:6px 18px;font-size:12px;color:var(--mute);display:flex;gap:12px;align-items:center;z-index:20}
-#msg.err{color:var(--err)} #msg.ok{color:var(--ok)}
+  padding:6px 18px;font-size:12px;color:var(--mute);display:flex;flex-wrap:wrap;
+  gap:4px 12px;align-items:center;z-index:20}
+footer .footer-path{margin-left:auto;min-width:0;overflow-wrap:anywhere}
+#msg.err{color:var(--err)} #msg.warn{color:var(--warn)} #msg.ok{color:var(--ok)}
 .spin{width:12px;height:12px;border:2px solid #ccd;border-top-color:var(--pri);
   border-radius:50%;animation:sp .7s linear infinite;display:none}
 .spin.on{display:inline-block}
@@ -104,6 +108,16 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 .pill.blocked{background:#fdecea;color:#8c2018}
 @media(max-width:760px){.conn-grid{grid-template-columns:1fr}.conn-grid label{margin-top:4px}}
 @media(max-width:900px){.ai-grid{grid-template-columns:1fr}}
+@media(max-width:600px){
+  header{position:static;flex-wrap:wrap;padding:8px 12px;gap:8px 12px}
+  header h1{white-space:nowrap}
+  header .right{order:3;width:100%;margin-left:0;overflow-x:auto;padding-bottom:2px}
+  nav{top:0;padding:0 12px}
+  main{padding:12px 12px calc(var(--footer-h) + 12px)}
+  .page{scroll-margin-top:62px}
+  footer{padding:5px 12px}
+  footer .footer-path{flex:1 1 100%;margin-left:20px}
+}
 
 /* 子标签 */
 .subnav{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
@@ -171,8 +185,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   <button data-p="one">单表数据对比</button>
   <button data-p="map">表对应关系</button>
   <button data-p="xd">文件比对</button>
-  <button data-p="t2x">转 Excel</button>
-  <button data-p="conv">Excel 转换</button>
+  <button data-p="t2x">文本/图片 → Excel</button>
+  <button data-p="conv">Excel → SQL/PDF/Word</button>
   <button data-p="files">产物文件</button>
 </nav>
 
@@ -828,7 +842,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
           <option value="100000">不限（很慢，慎用）</option>
         </select>
         <label class="chk"><input type="checkbox" id="cd-land" checked> 横向纸张</label>
-        <label>标题(Word)</label><input type="text" id="cd-title" placeholder="可留空" style="width:130px">
+        <label>标题(PDF/Word)</label><input type="text" id="cd-title" placeholder="可留空" style="width:130px">
         <button class="btn pri" id="cd-run" onclick="runExcel2Doc()">▶ 转换</button>
       </div>
       <div id="cd-probe"></div>
@@ -842,8 +856,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 
 <!-- ══ 转 Excel（文本 / 图片）══ -->
 <section class="page" id="p-t2x">
-  <p class="hint">文本或图片转 Excel，自动优化格式（表头蓝底白字、冻结首行、边框、列宽按内容自适应）。
-    图片走 macOS 原生 OCR，按文字坐标还原表格行列。</p>
+  <p class="hint"><b>文本/图片 → Excel：</b>自动设置中文字体、表头、细边框、筛选、换行、行高列宽和打印页面。
+    文本预览最多显示 500 行，但生成 Excel 会导出全部内容；图片 OCR 支持 Windows 10/11 与 macOS，识别结果需人工核对。</p>
 
   <div class="subnav">
     <button class="on" data-s="txt">文本 → Excel</button>
@@ -866,6 +880,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
     <div class="row" style="margin-top:10px">
       <textarea id="tx-text" rows="9" placeholder="表名&#9;行数&#10;example_a&#9;1584&#10;example_b&#9;78402"></textarea>
     </div>
+    <p class="hint" style="margin:8px 0 0">逗号、Tab 和竖线模式支持双引号包裹字段；内部空行会保留。
+      预览只用于核对，生成时会重新解析这里的完整文本。</p>
     <div class="row" style="margin-top:10px">
       <button class="btn pri" onclick="runText2Rows()">▶ 预览</button>
       <button class="btn" onclick="exportText2Xlsx()">生成 Excel</button>
@@ -893,6 +909,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
         <button class="btn" onclick="exportImg2Xlsx()">生成 Excel</button>
         <span id="im-info" style="color:var(--mute);font-size:13px"></span>
       </div>
+      <p class="hint" style="margin:8px 0 0">图片 OCR 支持 Windows 10/11 与 macOS；识别可能受清晰度、合并单元格和复杂背景影响，生成 Excel 前请人工核对。</p>
       <div id="im-warn"></div>
     </div>
     <div class="tablewrap"><div class="empty" id="im-empty">识别后在此显示，可先核对再导出</div>
@@ -905,7 +922,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 
 <!-- ══ 产物文件 ══ -->
 <section class="page" id="p-files">
-  <p class="hint">所有导出的 Excel / CSV 都落在 <code>{{ data_dir }}</code>，点文件名下载。</p>
+  <p class="hint">所有导出的 Excel / CSV / SQL / PDF / Word 都落在 <code>{{ data_dir }}</code>，点文件名下载。</p>
   <div class="card"><button class="btn" onclick="loadFiles()">刷新列表</button></div>
   <div class="tablewrap"><div class="empty" id="fl-empty">点刷新加载</div>
     <table id="fl-table" style="display:none"></table></div>
@@ -920,7 +937,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 <footer>
   <span class="spin" id="spin"></span>
   <span id="msg">就绪</span>
-  <span style="margin-left:auto">产物目录 {{ data_dir }}</span>
+  <span class="footer-path">产物目录 {{ data_dir }}</span>
 </footer>
 
 <script>
@@ -934,6 +951,13 @@ const RISK_ICON = {high:'🔴', mid:'🟠', low:'🟡'};
 /* ── 基础设施 ── */
 function say(m, kind=''){ const e=q('#msg'); e.textContent=m; e.className=kind; }
 function busy(on){ q('#spin').classList.toggle('on', on); }
+function syncFooterSpacing(){
+  const e=q('footer');
+  if(e) document.documentElement.style.setProperty('--footer-h', Math.ceil(e.getBoundingClientRect().height)+'px');
+}
+if('ResizeObserver' in window) new ResizeObserver(syncFooterSpacing).observe(q('footer'));
+window.addEventListener('resize', syncFooterSpacing);
+syncFooterSpacing();
 async function post(url, body){
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json',
     'X-Toolbox-Token':SESSION_TOKEN},
@@ -1030,13 +1054,16 @@ function renderAiAudit(a){
     `<div class="risk ${x.level==='blocked'?'high':x.level==='warning'?'mid':'low'}"><b>${x.level==='blocked'?'已拦截':'提示'}</b><div class="d">${esc(x.message)}</div></div>`).join('');
   return issues || '<div class="verdict ok"><b>静态检查通过</b>未发现写操作、多语句或未替换变量。</div>';
 }
+function auditStatusKind(a){
+  return a.level==='blocked' ? 'err' : (a.level==='warning' ? 'warn' : 'ok');
+}
 async function auditAiSql(){
   const sql=q('#ai-sql').value.trim();
   if(!sql) return alert('请先生成或粘贴 SQL');
   const r=await post('/api/ai/audit',{sql});
   if(!r.ok) return alert(r.msg);
   q('#ai-detail').innerHTML=renderAiAudit(r.audit);
-  say(r.audit.summary,r.audit.safe?'ok':'err');
+  say(r.audit.summary,auditStatusKind(r.audit));
 }
 async function generateAiSql(){
   const task=q('#ai-task').value.trim();
@@ -1054,7 +1081,9 @@ async function generateAiSql(){
     if(r.assumptions?.length) html+=`<div class="card"><b>假设</b><ul>${r.assumptions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
     if(r.warnings?.length) html+=`<div class="card"><b>模型提示</b><ul>${r.warnings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
     q('#ai-detail').innerHTML=html;
-    say(r.audit.safe?'AI 已生成，等待你核对':'生成结果被只读检查拦截，请勿执行',r.audit.safe?'ok':'err');
+    const msg = r.audit.level==='blocked' ? '生成结果被只读检查拦截，请勿执行'
+      : (r.audit.level==='warning' ? 'AI 已生成，存在提示，请处理后再执行' : 'AI 已生成，等待你核对');
+    say(msg,auditStatusKind(r.audit));
   } finally { busy(false); btn.disabled=false; btn.textContent=old; }
 }
 function useAiSql(){
@@ -1131,7 +1160,10 @@ function closeTopPanels(){
 }
 function switchPage(name){
   const tab=qa('nav button').find(x=>x.dataset.p===name);
-  if(tab) tab.click();
+  if(tab){
+    tab.click();
+    tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
 }
 qa('nav button').forEach(b=>b.onclick=()=>{
   closeTopPanels();
@@ -1413,8 +1445,7 @@ function bindCpDrill(){
       q('#ot-clusterB').value=q('#cp-clusterB').value;
       q('#ot-dbA').value=ST.cpA; q('#ot-dbB').value=ST.cpB;
       q('#ot-tableA').value=a||b; q('#ot-tableB').value=b||a;
-      qa('nav button').forEach(x=>x.classList.toggle('on', x.dataset.p==='one'));
-      qa('.page').forEach(p=>p.classList.toggle('on', p.id==='p-one'));
+      switchPage('one');
       say('已带入 '+(a||b)+'，填主键后点「开始对比」');
     };
   });
@@ -2247,11 +2278,11 @@ async function runImg2Rows(){
       headers:{'X-Toolbox-Token':SESSION_TOKEN},body:fd})).json();
     if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
     ST.imgRows = r.rows;
-    const head = q('#im-head').checked && r.rows.length>1;
+    const head = q('#im-head').checked && r.rows.length>0;
     render('im', head ? r.rows[0] : (r.rows[0]||[]).map((_,i)=>'列'+(i+1)),
                  head ? r.rows.slice(1) : r.rows);
-    q('#im-info').textContent =
-      `${r.block_count} 个文字块 → ${r.row_count} 行 × ${r.col_count} 列 · 置信度 ${r.avg_conf}`;
+    q('#im-info').textContent = `${r.block_count} 个文字块 → ${r.row_count} 行 × ${r.col_count} 列 · ` +
+      (r.confidence_available ? `置信度 ${r.avg_conf}` : '系统未提供置信度');
     q('#im-warn').innerHTML = r.warning
       ? `<div class="warnbox">${esc(r.warning)}${r.low_conf_texts.length?
           '<br>低置信度片段：'+r.low_conf_texts.map(esc).join('、'):''}</div>` : '';
@@ -2261,7 +2292,7 @@ async function runImg2Rows(){
 async function exportImg2Xlsx(){
   const rows = ST.imgRows;
   if(!rows || !rows.length) return alert('请先识别图片');
-  const head = q('#im-head').checked && rows.length>1;
+  const head = q('#im-head').checked && rows.length>0;
   await doExport({'数据': head ? [rows[0], rows.slice(1)] : [[], rows]},
                  q('#im-name').value || '图片转Excel');
 }
@@ -2274,18 +2305,29 @@ async function runText2Rows(){
   const r = await post('/api/text2rows', {text, delim:DELIM[q('#tx-delim').value]});
   if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
   ST.txRows = r.rows;
-  const head = q('#tx-head').checked && r.rows.length>1;
+  const head = q('#tx-head').checked && r.rows.length>0;
   render('tx', head ? r.rows[0] : r.rows[0].map((_,i)=>'列'+(i+1)),
               head ? r.rows.slice(1) : r.rows);
-  const tip = `${r.total} 行 × ${r.cols} 列` + (r.total>r.rows.length?`（预览前 ${r.rows.length} 行）`:'');
+  const tip = `${r.total} 行 × ${r.cols} 列` +
+    (r.total>r.rows.length?`（仅预览前 ${r.rows.length} 行，导出仍包含全部）`:'');
   q('#tx-info').textContent = tip; say('解析成功 · '+tip, 'ok');
 }
 async function exportText2Xlsx(){
-  if(!ST.txRows) await runText2Rows();
-  const rows = ST.txRows; if(!rows) return;
-  const head = q('#tx-head').checked && rows.length>1;
-  await doExport({'数据': head ? [rows[0], rows.slice(1)] : [[], rows]},
-                 q('#tx-name').value || '文本转Excel');
+  const text = q('#tx-text').value;
+  if(!text.trim()) return alert('请先粘贴文本');
+  busy(true); say('正在解析完整文本并生成 Excel…');
+  try{
+    const r = await post('/api/text2xlsx', {
+      text,
+      delim:DELIM[q('#tx-delim').value],
+      head:q('#tx-head').checked,
+      name:q('#tx-name').value || '文本转Excel'
+    });
+    if(!r.ok){ say(r.msg,'err'); return alert(r.msg); }
+    say(`已完整导出 ${r.file}（${r.rows} 条数据，${r.size}）`, 'ok');
+    if(confirm(`已生成 ${r.file}（${r.rows} 条数据，${r.size}）\n\n现在下载？`))
+      location.href='/download/'+encodeURIComponent(r.file);
+  } finally { busy(false); }
 }
 
 /* ── 通用导出 ── */

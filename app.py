@@ -29,7 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 
 import matrix_core as core
 import sql_tools as st
@@ -1134,7 +1134,7 @@ def api_excel2doc():
                              sheet=sheet, max_rows=max_rows)
     else:
         out = CLIENT.data_dir / f"{stem}.pdf"
-        r = cv.excel_to_pdf(xlsx, out, landscape=landscape, sheet=sheet,
+        r = cv.excel_to_pdf(xlsx, out, landscape=landscape, title=title, sheet=sheet,
                             max_rows=max_rows)
     return ok(**r)
 
@@ -1142,10 +1142,9 @@ def api_excel2doc():
 @app.route("/api/image2rows", methods=["POST"])
 @api
 def api_image2rows():
-    """图片 → 表格（macOS Vision OCR 按坐标还原行列）"""
+    """图片 → 表格（Windows/macOS 原生 OCR 按坐标还原行列）。"""
     img = _save_upload("file", Path(request.files["file"].filename).suffix or ".png")
     r = cv.image_to_rows(img, min_fill=float(request.form.get("min_fill") or 0.15))
-    r["rows"] = r["rows"][:500]
     return ok(**r)
 
 
@@ -1158,6 +1157,21 @@ def api_text2rows():
     p = request.get_json(force=True)
     rows = core.text_to_rows(p.get("text") or "", p.get("delim") or "auto")
     return ok(rows=rows[:500], total=len(rows), cols=len(rows[0]))
+
+
+@app.route("/api/text2xlsx", methods=["POST"])
+@api
+def api_text2xlsx():
+    """从原始文本直接导出完整 Excel；预览的 500 行上限不影响成品。"""
+    p = request.get_json(force=True)
+    rows = core.text_to_rows(p.get("text") or "", p.get("delim") or "auto")
+    has_header = bool(p.get("head", True)) and bool(rows)
+    headers, data_rows = (rows[0], rows[1:]) if has_header else ([], rows)
+    name = core.safe_name(p.get("name") or "文本转Excel")
+    out = CLIENT.data_dir / f"{name}.xlsx"
+    core.write_xlsx(out, {"数据": (headers, data_rows)})
+    return ok(file=out.name, path=str(out), total=len(rows), rows=len(data_rows),
+              cols=len(rows[0]), size=f"{out.stat().st_size / 1024:.0f} KB")
 
 
 # ── 导出 ────────────────────────────────────────────────────────
@@ -1272,10 +1286,14 @@ def api_export():
               size=f"{out.stat().st_size / 1024:.0f} KB")
 
 
+ARTIFACT_SUFFIXES = frozenset({".xlsx", ".csv", ".sql", ".docx", ".pdf"})
+
+
 @app.route("/api/files")
 def api_files():
     d = CLIENT.data_dir
-    files = sorted((f for f in d.glob("*") if f.suffix.lower() in (".xlsx", ".csv")
+    files = sorted((f for f in d.glob("*") if f.is_file()
+                    and f.suffix.lower() in ARTIFACT_SUFFIXES
                     and not f.name.startswith(".")),
                    key=lambda p: p.stat().st_mtime, reverse=True)[:60]
     return ok(items=[{"name": f.name, "size": f"{f.stat().st_size / 1024:.0f} KB",
@@ -1286,6 +1304,16 @@ def api_files():
 
 @app.route("/download/<path:name>")
 def download(name):
+    candidate = (CLIENT.data_dir / name).resolve()
+    root = CLIENT.data_dir.resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        abort(404)
+    if (not candidate.is_file()
+            or candidate.suffix.lower() not in ARTIFACT_SUFFIXES
+            or any(part.startswith(".") for part in Path(name).parts)):
+        abort(404)
     return send_from_directory(CLIENT.data_dir, name, as_attachment=True)
 
 

@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 import app
+import openpyxl
 
 
 class AppSmokeTests(unittest.TestCase):
@@ -15,6 +16,18 @@ class AppSmokeTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(200, response.status_code)
         self.assertIn(b'id="p-ai"', response.data)
+        self.assertIn("文本/图片 → Excel".encode(), response.data)
+        self.assertIn("Excel → SQL/PDF/Word".encode(), response.data)
+
+    def test_home_includes_responsive_and_cross_platform_ui_fixes(self):
+        response = self.client.get("/")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("Windows 10/11 与 macOS".encode(), response.data)
+        self.assertIn("标题(PDF/Word)".encode(), response.data)
+        self.assertIn(b"ResizeObserver", response.data)
+        self.assertIn(b"#msg.warn", response.data)
+        self.assertIn(b"switchPage('one')", response.data)
+        self.assertIn(b"q('#im-head').checked && rows.length>0", response.data)
 
     def test_write_api_requires_session_token(self):
         response = self.client.post("/api/ai/audit", json={"sql": "SELECT 1"})
@@ -92,6 +105,76 @@ class AppSmokeTests(unittest.TestCase):
                 app.CLIENT.data_dir = original_data_dir
         self.assertTrue(response.json["ok"])
         self.assertEqual(0, response.json["total"])
+
+    def test_text_export_uses_all_rows_not_preview_slice(self):
+        text = "编号\t名称\n" + "\n".join(
+            f"{i:04d}\t第{i}行" for i in range(1, 506)
+        )
+        original_data_dir = app.CLIENT.data_dir
+        with tempfile.TemporaryDirectory() as tmp:
+            app.CLIENT.data_dir = Path(tmp)
+            try:
+                preview = self.client.post("/api/text2rows", json={
+                    "text": text, "delim": "\t",
+                }, headers=self.headers)
+                response = self.client.post("/api/text2xlsx", json={
+                    "text": text, "delim": "\t", "head": True,
+                    "name": "完整文本导出",
+                }, headers=self.headers)
+                output = Path(tmp) / response.json["file"]
+            finally:
+                app.CLIENT.data_dir = original_data_dir
+
+            self.assertTrue(preview.json["ok"])
+            self.assertEqual(506, preview.json["total"])
+            self.assertEqual(500, len(preview.json["rows"]))
+            self.assertTrue(response.json["ok"])
+            self.assertEqual(506, response.json["total"])
+            self.assertEqual(505, response.json["rows"])
+            wb = openpyxl.load_workbook(output, read_only=True, data_only=True)
+            try:
+                ws = wb["数据"]
+                self.assertEqual(506, ws.max_row)
+                self.assertEqual("0505", ws["A506"].value)
+            finally:
+                wb.close()
+
+    def test_files_lists_only_supported_artifact_types(self):
+        original_data_dir = app.CLIENT.data_dir
+        with tempfile.TemporaryDirectory() as tmp:
+            app.CLIENT.data_dir = Path(tmp)
+            try:
+                supported = {
+                    "report.xlsx", "rows.csv", "insert.sql",
+                    "document.docx", "print.pdf",
+                }
+                for name in supported | {"notes.txt", "program.exe", ".hidden.xlsx"}:
+                    (Path(tmp) / name).write_text("fixture", encoding="utf-8")
+                response = self.client.get("/api/files")
+            finally:
+                app.CLIENT.data_dir = original_data_dir
+
+        self.assertTrue(response.json["ok"])
+        names = {item["name"] for item in response.json["items"]}
+        self.assertEqual(supported, names)
+
+    def test_download_only_serves_supported_visible_artifacts(self):
+        original_data_dir = app.CLIENT.data_dir
+        with tempfile.TemporaryDirectory() as tmp:
+            app.CLIENT.data_dir = Path(tmp)
+            try:
+                for name in ("report.xlsx", "notes.txt", "program.exe",
+                             ".hidden.xlsx"):
+                    (Path(tmp) / name).write_text("fixture", encoding="utf-8")
+                response = self.client.get("/download/report.xlsx")
+                self.assertEqual(200, response.status_code)
+                response.close()
+                self.assertEqual(404, self.client.get("/download/notes.txt").status_code)
+                self.assertEqual(404, self.client.get("/download/program.exe").status_code)
+                self.assertEqual(404, self.client.get("/download/.hidden.xlsx").status_code)
+                self.assertEqual(404, self.client.get("/download/missing.pdf").status_code)
+            finally:
+                app.CLIENT.data_dir = original_data_dir
 
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ import json
 import re
 import subprocess
 import sys
+from datetime import date, datetime, time
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import matrix_core as core
@@ -64,14 +66,23 @@ def parse_ddl(ddl: str) -> dict:
             continue
         if re.match(r"(INDEX|KEY|CONSTRAINT|FOREIGN)\b", line, re.I):
             continue
-        cm = re.match(r"[`\"]?([\w\u4e00-\u9fff]+)[`\"]?\s+([A-Za-z]+)", line)
+        # 反引号/双引号中的字段名可包含空格、括号等字符。之前仅允许
+        # ``\w + 中文``，会把 `金额（元）` 这类常见业务字段静默漏掉。
+        cm = re.match(
+            r'(?:`([^`]+)`|"([^"]+)"|([\w\u4e00-\u9fff]+))\s+'
+            r'([A-Za-z][A-Za-z0-9_]*)',
+            line,
+        )
         if not cm:
             continue
-        name, ctype = cm.group(1), cm.group(2).lower()
+        name = next(v for v in cm.groups()[:3] if v is not None)
+        ctype = cm.group(4).lower()
+        scale_match = re.match(r"\s*\(\s*\d+\s*,\s*(\d+)\s*\)", line[cm.end():])
         cols.append({
             "name": name, "type": ctype,
             "quoted": _needs_quote(ctype),
             "nullable": not re.search(r"\bNOT\s+NULL\b", line, re.I),
+            "scale": int(scale_match.group(1)) if scale_match else None,
         })
     if not cols:
         raise ValueError("建表语句里没解析出任何字段")
@@ -121,17 +132,37 @@ def _sql_literal(value, col: dict) -> str:
         return "NULL"
     if isinstance(value, bool):
         return "1" if value else "0"
-    s = str(value).strip()
+    ctype = str(col.get("type") or "").lower()
+    if isinstance(value, datetime):
+        if ctype == "date":
+            s = value.strftime("%Y-%m-%d")
+        elif ctype == "time":
+            s = value.strftime("%H:%M:%S")
+        else:
+            s = value.strftime("%Y-%m-%d %H:%M:%S")
+    elif isinstance(value, date):
+        s = value.strftime("%Y-%m-%d")
+    elif isinstance(value, time):
+        s = value.strftime("%H:%M:%S")
+    else:
+        s = str(value).strip()
     if s.upper() in ("NULL", "\\N"):
         return "NULL"
     if not col["quoted"]:
-        # 数值列：Excel 常把整数读成 100.0，去掉多余小数
-        if isinstance(value, float) and value.is_integer():
-            return str(int(value))
         try:
-            float(s)
-            return s
-        except ValueError:
+            number = Decimal(str(value))
+            scale = col.get("scale")
+            if scale is not None:
+                quantum = Decimal(1).scaleb(-int(scale))
+                return format(number.quantize(quantum), f".{int(scale)}f")
+            # 无固定小数位的数值列：Excel 常把整数读成 100.0。
+            if isinstance(value, float) and value.is_integer():
+                return str(int(value))
+            if isinstance(value, float):
+                # openpyxl 可能返回 6172.799999999999 这类二进制浮点尾差。
+                return format(value, ".15g")
+            return format(number, "f")
+        except (InvalidOperation, ValueError, TypeError):
             return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
     if isinstance(value, float) and value.is_integer():
         s = str(int(value))
@@ -217,9 +248,19 @@ def _wrap_insert(table: str, col_list: str, values: list[str]) -> str:
 # Excel → PDF
 # ══════════════════════════════════════════════════════════════
 
-CJK_FONTS = ("/Library/Fonts/Arial Unicode.ttf",
-             "/System/Library/Fonts/Supplemental/Songti.ttc",
-             "/System/Library/Fonts/Hiragino Sans GB.ttc")
+CJK_FONTS = (
+    # Windows：fpdf2 优先微软雅黑；老版 pyfpdf 会自动跳过 TTC，改用 SimHei TTF。
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/simhei.ttf",
+    "C:/Windows/Fonts/msyh.ttf",
+    # macOS
+    "/Library/Fonts/Arial Unicode.ttf",
+    "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    # 常见 Linux 桌面/容器
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf",
+)
 
 
 def _pick_font() -> str | None:
@@ -263,20 +304,75 @@ def _prepare_font() -> tuple[str, bool]:
     return str(dst), True
 
 
+def _display_value(value, header: str = "") -> str:
+    """把工作簿值转成适合文档阅读的文本，而不是 Python 的原始表示。"""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "是" if value else "否"
+    if isinstance(value, datetime):
+        if value.time() == time(0, 0):
+            return value.strftime("%Y-%m-%d")
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, time):
+        return value.strftime("%H:%M:%S")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        h = str(header).lower()
+        if any(k in h for k in ("百分比", "百分率", "占比", "比例")) or h.endswith("率"):
+            return f"{value:.2%}"
+        if any(k in h for k in ("金额", "价格", "单价", "费用", "余额", "收入", "支出", "总额", "税额")):
+            return f"{value:,.2f}"
+        if isinstance(value, int) or value.is_integer():
+            return str(int(value))
+        return format(value, ".15g")
+    return str(value)
+
+
+def _content_weight(value, header: str = "") -> int:
+    text = _display_value(value, header)
+    lines = text.replace("\r", "").split("\n")
+    return max((len(line) + sum(1 for ch in line if ord(ch) > 127)
+                for line in lines), default=4)
+
+
+def _pdf_wrap(pdf, text: str, width: float, max_lines: int) -> tuple[list[str], bool]:
+    """按实际字体宽度换行；返回 (行, 是否因安全上限被截断)。"""
+    text = str(text).replace("\r", "")
+    if not text:
+        return [""], False
+    limit = max(width - 2.0, 1.0)
+    lines: list[str] = []
+    for paragraph in text.split("\n"):
+        if paragraph == "":
+            lines.append("")
+            continue
+        current = ""
+        for ch in paragraph:
+            candidate = current + ch
+            if current and pdf.get_string_width(candidate) > limit:
+                lines.append(current)
+                current = ch
+            else:
+                current = candidate
+        lines.append(current)
+    clipped = len(lines) > max_lines
+    if clipped:
+        lines = lines[:max_lines]
+        tail = lines[-1]
+        while tail and pdf.get_string_width(tail + "…") > limit:
+            tail = tail[:-1]
+        lines[-1] = (tail + "…") if tail else "…"
+    return lines or [""], clipped
+
+
 def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
-                 max_rows: int = 800, sheet=None) -> dict:
-    """Excel → PDF。表格按列宽自适应分页，中文用系统字体嵌入。
-
-    同时兼容老版 pyfpdf(1.7.x) 与 fpdf2：两者 add_font/cell 的签名不同。
-
-    性能注意：老版 pyfpdf 是纯 Python 实现，每个单元格都要做字体子集映射，
-    3000 行 × 21 列（6 万格）要跑两分半。默认只出 800 行，
-    需要更多行请显式调大 max_rows 并接受相应耗时。
-    """
+                 max_rows: int = 800, title: str = "", sheet=None) -> dict:
+    """Excel → 可阅读的 PDF：跨平台中文字体、自动换行和重复表头。"""
     from fpdf import FPDF
 
     font_path, needs_uni = _prepare_font()
-
     headers, rows, meta = core.read_sheet_meta(xlsx, sheet)
     if not headers and not rows:
         raise ValueError("没读到任何内容。" + "；".join(meta["warnings"])
@@ -286,64 +382,122 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
     rows = rows[:max_rows]
 
     pdf = FPDF(orientation="L" if landscape else "P", unit="mm", format="A4")
-    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.set_margins(8, 8, 8)
+    pdf.set_auto_page_break(auto=False, margin=8)
     if needs_uni:
         pdf.add_font("cjk", "", font_path, uni=True)
     else:
         pdf.add_font("cjk", "", font_path)
-    pdf.add_page()
+    pdf.set_font("cjk", size=8)
+    pdf.set_draw_color(190, 198, 210)
+    pdf.set_line_width(0.2)
 
-    avail = pdf.w - 2 * pdf.l_margin
-
-    def cell_text(v):
-        return "" if v is None else str(v)
-
-    # 列宽：按内容长度加权分配（中文算 2 个宽度），并限制上下限
     ncol = max(len(headers), max((len(r) for r in rows), default=0)) or 1
+    avail = (297 if landscape else 210) - 16
     weights = []
     for i in range(ncol):
-        vals = [cell_text(headers[i]) if i < len(headers) else ""]
-        vals += [cell_text(r[i]) for r in rows[:200] if i < len(r)]
-        w = max((len(v) + sum(1 for ch in v if ord(ch) > 127) for v in vals),
-                default=4)
-        weights.append(min(max(w, 4), 40))
-    total_w = sum(weights)
-    widths = [max(avail * w / total_w, 8) for w in weights]
+        column_header = headers[i] if i < len(headers) else ""
+        values = [column_header]
+        values += [r[i] for r in rows[:200] if i < len(r)]
+        weight = min(max(max((_content_weight(v, column_header) for v in values),
+                             default=4), 4), 48)
+        header_text = str(column_header).lower()
+        if any(k in header_text for k in ("日期", "时间", "date", "time")):
+            weight = max(weight, 12)
+        if any(k in header_text for k in ("金额", "价格", "费用", "amount", "price")):
+            weight = max(weight, 13)
+        if any(k in header_text for k in ("百分", "比例")) or header_text.endswith("率"):
+            weight = max(weight, 10)
+        if any(k in header_text for k in ("电话", "手机", "联系方式")):
+            weight = max(weight, 14)
+        weights.append(weight)
+    total_weight = sum(weights) or 1
+    widths = [max(avail * w / total_weight, 8) for w in weights]
     scale = avail / sum(widths)
     widths = [w * scale for w in widths]
 
-    pdf.set_font("cjk", size=8)
-    line_h = 5.0
-    fit_cache: dict = {}          # 表格里重复值多，缓存能省掉大量宽度测量
+    line_h = 4.2
+    clipped_cells = 0
+    clipped_headers = 0
 
-    def row_cells(values, height, fill, border=1):
-        """逐格输出后手动换行，兼容两个版本的 cell 签名"""
-        for i, w in enumerate(widths):
-            txt = cell_text(values[i]) if i < len(values) else ""
-            pdf.cell(w, height, _fit(pdf, txt, w, fit_cache), border, 0, "L", fill)
-        pdf.ln(height)
+    def layout(values, header_row=False):
+        nonlocal clipped_cells, clipped_headers
+        wrapped = []
+        for i, width in enumerate(widths):
+            value = values[i] if i < len(values) else ""
+            column_header = headers[i] if i < len(headers) else ""
+            text = _display_value(value, column_header)
+            lines, clipped = _pdf_wrap(pdf, text, width, 5 if header_row else 10)
+            wrapped.append(lines)
+            if clipped:
+                if header_row:
+                    clipped_headers += 1
+                else:
+                    clipped_cells += 1
+        height = max(6.2, max(len(lines) for lines in wrapped) * line_h + 2.0)
+        return wrapped, height
 
-    def draw_header():
-        pdf.set_font("cjk", size=8)
-        pdf.set_fill_color(47, 84, 150)
-        pdf.set_text_color(255, 255, 255)
-        for i, w in enumerate(widths):
-            txt = cell_text(headers[i]) if i < len(headers) else ""
-            pdf.cell(w, line_h + 1, _fit(pdf, txt, w, fit_cache), 1, 0, "C", True)
-        pdf.ln(line_h + 1)
-        pdf.set_text_color(0, 0, 0)
+    header_layout = layout(headers, True) if headers else None
 
-    if headers:
-        draw_header()
-    fill = False
-    for r in rows:
-        if pdf.get_y() + line_h > pdf.h - pdf.b_margin:
-            pdf.add_page()
-            if headers:
-                draw_header()
-        pdf.set_fill_color(245, 246, 248)
-        row_cells(r, line_h, fill)
-        fill = not fill
+    def draw_layout(wrapped, height, header_row=False, alternate=False):
+        start_x, y = pdf.l_margin, pdf.get_y()
+        if header_row:
+            pdf.set_fill_color(47, 84, 150)
+            pdf.set_text_color(255, 255, 255)
+        else:
+            color = 245 if alternate else 255
+            pdf.set_fill_color(color, color + (1 if color < 255 else 0),
+                               min(color + (3 if color < 255 else 0), 255))
+            pdf.set_text_color(32, 39, 51)
+        x = start_x
+        for i, width in enumerate(widths):
+            pdf.rect(x, y, width, height, "DF")
+            lines = wrapped[i]
+            text_y = y + max((height - len(lines) * line_h) / 2, 0.8)
+            value = headers[i] if header_row and i < len(headers) else ""
+            align = "C" if header_row else "L"
+            if not header_row and i < len(headers):
+                h = str(headers[i])
+                if any(k in h for k in ("日期", "时间", "状态", "比例", "百分")):
+                    align = "C"
+            for li, text in enumerate(lines):
+                pdf.set_xy(x + 1, text_y + li * line_h)
+                pdf.cell(max(width - 2, 0.1), line_h, text, 0, 0, align)
+            x += width
+        pdf.set_xy(start_x, y + height)
+        pdf.set_text_color(32, 39, 51)
+
+    def add_page(first=False):
+        pdf.add_page()
+        if first and title:
+            pdf.set_font("cjk", size=14)
+            title_lines, _ = _pdf_wrap(pdf, title, avail, 2)
+            for line in title_lines:
+                pdf.cell(avail, 7, line, 0, 1, "C")
+            pdf.ln(2)
+            pdf.set_font("cjk", size=8)
+        if header_layout:
+            draw_layout(*header_layout, header_row=True)
+
+    add_page(first=True)
+    alternate = False
+    for row in rows:
+        row_layout = layout(row)
+        if pdf.get_y() + row_layout[1] > pdf.h - pdf.b_margin:
+            add_page()
+        draw_layout(*row_layout, alternate=alternate)
+        alternate = not alternate
+
+    warnings = list(meta["warnings"])
+    if truncated:
+        warnings.append(
+            f"源数据 {total_rows} 行，只输出前 {max_rows} 行；如需完整内容请调高行数上限。")
+    if clipped_cells:
+        warnings.append(
+            f"有 {clipped_cells} 个超长单元格为保证分页最多显示 10 行，末尾已用省略号标记。")
+    if clipped_headers:
+        warnings.append(
+            f"有 {clipped_headers} 个超长表头最多显示 5 行，末尾已用省略号标记。")
 
     out.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(out))
@@ -353,11 +507,9 @@ def excel_to_pdf(xlsx: Path, out: Path, landscape: bool = True,
             "font": Path(font_path).name,
             "sheet": meta["sheet"],
             "sheets": [s["name"] for s in meta["sheets"]],
-            "total_rows": total_rows,
-            "warnings": meta["warnings"] + (
-                [f"源数据 {total_rows} 行，只出了前 {max_rows} 行。"
-                 f"PDF 渲染是纯 Python 实现，每千行约 40 秒，"
-                 f"行数多请直接用 Excel 或先筛选再转"] if truncated else [])}
+            "total_rows": total_rows, "warnings": warnings,
+            "clipped_cells": clipped_cells,
+            "clipped_headers": clipped_headers}
 
 
 def _fit(pdf, text: str, width: float, cache: dict | None = None) -> str:
@@ -401,19 +553,21 @@ def _fit(pdf, text: str, width: float, cache: dict | None = None) -> str:
 
 def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
                   max_rows: int = 3000, title: str = "", sheet=None) -> dict:
-    """Excel → Word（.docx），表头加底色，正文隔行浅色"""
+    """Excel → Word（.docx），按内容分配列宽并提供可读的分页表格。"""
     from docx import Document
     from docx.enum.section import WD_ORIENT
+    from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
-    from docx.shared import Pt
+    from docx.shared import Inches, Pt, RGBColor
 
     headers, rows, meta = core.read_sheet_meta(xlsx, sheet)
     if not headers and not rows:
         raise ValueError("没读到任何内容。" + "；".join(meta["warnings"])
                          + f"\n工作表清单: {[s['name'] for s in meta['sheets']]}")
-    truncated = len(rows) > max_rows
+    total_rows = len(rows)
+    truncated = total_rows > max_rows
     rows = rows[:max_rows]
 
     doc = Document()
@@ -421,17 +575,96 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
     if landscape:
         sec.orientation = WD_ORIENT.LANDSCAPE
         sec.page_width, sec.page_height = sec.page_height, sec.page_width
+    sec.top_margin = Inches(0.45)
+    sec.bottom_margin = Inches(0.45)
+    sec.left_margin = Inches(0.45)
+    sec.right_margin = Inches(0.45)
+
+    word_font = ("PingFang SC" if sys.platform == "darwin" else
+                 ("Microsoft YaHei" if sys.platform == "win32" else "Noto Sans CJK SC"))
+
+    def style_run(run, size, bold=False, color=None):
+        run.bold = bold
+        run.font.size = Pt(size)
+        run.font.name = word_font
+        run._element.get_or_add_rPr().get_or_add_rFonts().set(
+            qn("w:eastAsia"), word_font)
+        if color is not None:
+            run.font.color.rgb = color
 
     if title:
         h = doc.add_paragraph(title)
         h.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = h.runs[0]
-        run.bold = True
-        run.font.size = Pt(14)
+        style_run(run, 14, bold=True, color=RGBColor(31, 55, 88))
+        h.paragraph_format.space_after = Pt(8)
 
     ncol = max(len(headers), max((len(r) for r in rows), default=0)) or 1
     table = doc.add_table(rows=1 if headers else 0, cols=ncol)
     table.style = "Table Grid"
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+
+    tbl_pr = table._tbl.tblPr
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tbl_pr.append(layout)
+
+    available_width = int(sec.page_width - sec.left_margin - sec.right_margin)
+    weights = []
+    for i in range(ncol):
+        column_header = headers[i] if i < len(headers) else ""
+        values = [column_header]
+        values += [r[i] for r in rows[:200] if i < len(r)]
+        weight = min(max(max((_content_weight(v, column_header) for v in values),
+                             default=4), 4), 48)
+        header_text = str(column_header).lower()
+        if any(k in header_text for k in ("日期", "时间", "date", "time")):
+            weight = max(weight, 12)
+        if any(k in header_text for k in ("金额", "价格", "费用", "amount", "price")):
+            weight = max(weight, 13)
+        if any(k in header_text for k in ("百分", "比例")) or header_text.endswith("率"):
+            weight = max(weight, 10)
+        if any(k in header_text for k in ("电话", "手机", "联系方式")):
+            weight = max(weight, 14)
+        weights.append(weight)
+    min_weight = 5 if ncol <= 12 else 3
+    weights = [max(w, min_weight) for w in weights]
+    word_widths = [int(available_width * w / (sum(weights) or 1)) for w in weights]
+
+    def set_cell_width(cell, width):
+        cell.width = width
+        tc_w = cell._tc.get_or_add_tcPr().get_or_add_tcW()
+        tc_w.set(qn("w:w"), str(max(1, int(width / 635))))
+        tc_w.set(qn("w:type"), "dxa")
+
+    def set_cell_margins(cell, top=55, start=75, bottom=55, end=75):
+        tc_pr = cell._tc.get_or_add_tcPr()
+        tc_mar = tc_pr.first_child_found_in("w:tcMar")
+        if tc_mar is None:
+            tc_mar = OxmlElement("w:tcMar")
+            tc_pr.append(tc_mar)
+        for edge, value in (("top", top), ("start", start),
+                            ("bottom", bottom), ("end", end)):
+            node = tc_mar.find(qn(f"w:{edge}"))
+            if node is None:
+                node = OxmlElement(f"w:{edge}")
+                tc_mar.append(node)
+            node.set(qn("w:w"), str(value))
+            node.set(qn("w:type"), "dxa")
+
+    def keep_row_together(row):
+        tr_pr = row._tr.get_or_add_trPr()
+        if tr_pr.find(qn("w:cantSplit")) is None:
+            tr_pr.append(OxmlElement("w:cantSplit"))
+
+    def repeat_header(row):
+        tr_pr = row._tr.get_or_add_trPr()
+        flag = OxmlElement("w:tblHeader")
+        flag.set(qn("w:val"), "true")
+        tr_pr.append(flag)
+
+    body_size = 8.5 if ncol <= 8 else (7.5 if ncol <= 12 else 6.5)
 
     def shade(cell, color: str):
         el = OxmlElement("w:shd")
@@ -439,30 +672,55 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
         cell._tc.get_or_add_tcPr().append(el)
 
     if headers:
-        hdr = table.rows[0].cells
+        header_row = table.rows[0]
+        repeat_header(header_row)
+        keep_row_together(header_row)
+        hdr = header_row.cells
         for i in range(ncol):
             txt = str(headers[i]) if i < len(headers) else ""
             cell = hdr[i]
             cell.text = txt
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            set_cell_width(cell, word_widths[i])
+            set_cell_margins(cell, top=70, bottom=70)
             shade(cell, "2F5496")
             for p in cell.paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
                 for r in p.runs:
-                    r.bold = True
-                    r.font.size = Pt(9)
-                    r.font.color.rgb = None
-                    r.font.name = "微软雅黑"
+                    style_run(r, 9, bold=True, color=RGBColor(255, 255, 255))
 
     for ri, r in enumerate(rows):
-        cells = table.add_row().cells
+        row = table.add_row()
+        keep_row_together(row)
+        cells = row.cells
         for i in range(ncol):
             v = r[i] if i < len(r) else None
-            cells[i].text = "" if v is None else str(v)
+            header = str(headers[i]) if i < len(headers) else ""
+            cells[i].text = _display_value(v, header)
+            cells[i].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            set_cell_width(cells[i], word_widths[i])
+            set_cell_margins(cells[i])
             if ri % 2:
                 shade(cells[i], "F5F6F8")
             for p in cells[i].paragraphs:
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                elif any(k in header for k in ("日期", "时间", "状态", "比例", "百分")):
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                else:
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
+                p.paragraph_format.line_spacing = 1
                 for run in p.runs:
-                    run.font.size = Pt(8.5)
+                    style_run(run, body_size, color=RGBColor(32, 39, 51))
+
+    warnings = list(meta["warnings"])
+    if truncated:
+        warnings.append(
+            f"源数据 {total_rows} 行，只输出前 {max_rows} 行；如需完整内容请调高行数上限。")
 
     out.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out))
@@ -471,11 +729,11 @@ def excel_to_word(xlsx: Path, out: Path, landscape: bool = True,
             "size": f"{out.stat().st_size / 1024:.0f} KB",
             "sheet": meta["sheet"],
             "sheets": [s["name"] for s in meta["sheets"]],
-            "warnings": meta["warnings"]}
+            "total_rows": total_rows, "warnings": warnings}
 
 
 # ══════════════════════════════════════════════════════════════
-# 图片 → Excel（macOS Vision OCR）
+# 图片 → Excel（macOS Vision / Windows OCR）
 # ══════════════════════════════════════════════════════════════
 
 OCR_SWIFT = r'''
@@ -512,6 +770,81 @@ print(String(data: try! JSONSerialization.data(withJSONObject: out),
 '''
 
 
+OCR_POWERSHELL = r'''
+param([Parameter(Mandatory=$true)][string]$ImagePath)
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$null = [Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime]
+$null = [Windows.Storage.FileAccessMode, Windows.Storage, ContentType=WindowsRuntime]
+$null = [Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType=WindowsRuntime]
+$null = [Windows.Graphics.Imaging.SoftwareBitmap, Windows.Graphics.Imaging, ContentType=WindowsRuntime]
+$null = [Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType=WindowsRuntime]
+$null = [Windows.Media.Ocr.OcrResult, Windows.Foundation, ContentType=WindowsRuntime]
+
+$script:asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+  $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and
+  $_.GetGenericArguments().Count -eq 1 -and $_.GetParameters().Count -eq 1
+})[0]
+function Await-WinRt($Operation, [Type]$ResultType) {
+  $task = $script:asTask.MakeGenericMethod($ResultType).Invoke($null, @($Operation))
+  $task.Wait()
+  return $task.Result
+}
+
+$file = Await-WinRt ([Windows.Storage.StorageFile]::GetFileFromPathAsync($ImagePath)) ([Windows.Storage.StorageFile])
+$stream = Await-WinRt ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+$decoder = Await-WinRt ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+$bitmap = Await-WinRt ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+$engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+if ($null -eq $engine) { throw 'Windows OCR language pack is unavailable' }
+$result = Await-WinRt ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
+
+$blocks = @()
+foreach ($line in $result.Lines) {
+  $words = @($line.Words | Sort-Object { $_.BoundingRect.X })
+  $group = @()
+  $right = 0.0
+  $height = 0.0
+  foreach ($word in $words) {
+    $rect = $word.BoundingRect
+    $gap = [double]$rect.X - $right
+    $joinGap = [Math]::Max(6.0, [Math]::Min([double]$height, [double]$rect.Height) * 0.65)
+    if ($group.Count -gt 0 -and $gap -gt $joinGap) {
+      $first = $group[0].BoundingRect
+      $last = $group[-1].BoundingRect
+      $top = ($group | ForEach-Object { $_.BoundingRect.Y } | Measure-Object -Minimum).Minimum
+      $bottom = ($group | ForEach-Object { $_.BoundingRect.Y + $_.BoundingRect.Height } | Measure-Object -Maximum).Maximum
+      $blocks += [ordered]@{
+        text = (($group | ForEach-Object { $_.Text }) -join ' ')
+        x = [double]$first.X / [double]$bitmap.PixelWidth
+        y = [double]$top / [double]$bitmap.PixelHeight
+        w = ([double]$last.X + [double]$last.Width - [double]$first.X) / [double]$bitmap.PixelWidth
+        h = ([double]$bottom - [double]$top) / [double]$bitmap.PixelHeight
+      }
+      $group = @()
+    }
+    $group += $word
+    $right = [double]$rect.X + [double]$rect.Width
+    $height = [double]$rect.Height
+  }
+  if ($group.Count -gt 0) {
+    $first = $group[0].BoundingRect
+    $last = $group[-1].BoundingRect
+    $top = ($group | ForEach-Object { $_.BoundingRect.Y } | Measure-Object -Minimum).Minimum
+    $bottom = ($group | ForEach-Object { $_.BoundingRect.Y + $_.BoundingRect.Height } | Measure-Object -Maximum).Maximum
+    $blocks += [ordered]@{
+      text = (($group | ForEach-Object { $_.Text }) -join ' ')
+      x = [double]$first.X / [double]$bitmap.PixelWidth
+      y = [double]$top / [double]$bitmap.PixelHeight
+      w = ([double]$last.X + [double]$last.Width - [double]$first.X) / [double]$bitmap.PixelWidth
+      h = ([double]$bottom - [double]$top) / [double]$bitmap.PixelHeight
+    }
+  }
+}
+ConvertTo-Json -InputObject @($blocks) -Compress
+'''
+
+
 def _ensure_ocr_binary() -> Path:
     """确保 OCR 二进制存在：优先用随包预编译的，否则就地编译并缓存"""
     bundled = core.res_path("vendor/ocr")
@@ -544,10 +877,42 @@ def _has_swiftc() -> bool:
     return which("swiftc") is not None
 
 
+def _windows_ocr_blocks(image: Path) -> list[dict]:
+    """调用 Windows.Media.Ocr；脚本写入带 BOM 的缓存文件以兼容 PowerShell 5。"""
+    import hashlib
+
+    tag = hashlib.sha256(OCR_POWERSHELL.encode()).hexdigest()[:16]
+    cache_dir = core.CACHE_DIR / f"win_ocr_{tag}"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    script = cache_dir / "ocr.ps1"
+    if not script.exists():
+        script.write_text(OCR_POWERSHELL, encoding="utf-8-sig")
+    r = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+         "-File", str(script), "-ImagePath", str(image.resolve())],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=180,
+        env=core.clean_subprocess_env(),
+    )
+    if r.returncode != 0:
+        detail = (r.stderr or r.stdout or "未知错误")[:500]
+        raise RuntimeError(
+            "Windows 图片识别失败。请确认系统已安装中文 OCR 语言包。\n" + detail)
+    line = next((item for item in r.stdout.splitlines()
+                 if item.lstrip().startswith("[")), None)
+    if line is None:
+        raise RuntimeError("图片识别没有返回结果，可能图里没有可识别的文字")
+    return json.loads(line)
+
+
 def ocr_blocks(image: Path) -> list[dict]:
-    """调用 Vision 识别图片文字，返回带归一化坐标的文字块"""
+    """调用当前系统的原生 OCR，返回带归一化坐标的文字块。"""
     if not image.exists():
         raise FileNotFoundError(f"图片不存在: {image}")
+    if sys.platform == "win32":
+        return _windows_ocr_blocks(image)
+    if sys.platform != "darwin":
+        raise RuntimeError("图片识别当前支持 Windows 10/11 和 macOS")
     binary = _ensure_ocr_binary()
     r = subprocess.run([str(binary), str(image)], capture_output=True,
                        text=True, timeout=180, env=core.clean_subprocess_env())
@@ -627,15 +992,23 @@ def image_to_rows(image: Path, row_tol: float = 0.6, col_gap: float = 0.025,
     """图片 → 表格二维数组 + 识别质量信息"""
     blocks = ocr_blocks(image)
     rows = blocks_to_rows(blocks, row_tol, col_gap, min_fill)
-    confs = [b.get("conf", 0) for b in blocks]
-    low = [b["text"] for b in blocks if b.get("conf", 1) < 0.5]
+    confidence_available = bool(blocks) and all(
+        isinstance(b.get("conf"), (int, float)) for b in blocks)
+    confs = [float(b["conf"]) for b in blocks] if confidence_available else []
+    low = ([b["text"] for b in blocks if float(b["conf"]) < 0.5]
+           if confidence_available else [])
+    warnings = []
+    if not confidence_available and blocks:
+        warnings.append("当前系统 OCR 不提供逐块置信度，生成 Excel 前请逐格人工核对")
+    if len(low) > 3:
+        warnings.append("部分文字识别置信度偏低，请重点核对相似字符 f/t、l/1、0/O")
     return {
         "rows": rows,
         "block_count": len(blocks),
         "row_count": len(rows),
         "col_count": len(rows[0]) if rows else 0,
-        "avg_conf": round(sum(confs) / len(confs), 3) if confs else 0,
+        "avg_conf": round(sum(confs) / len(confs), 3) if confs else None,
+        "confidence_available": confidence_available,
         "low_conf_texts": low[:20],
-        "warning": ("部分文字识别置信度偏低，导入后请核对（尤其相似字符 f/t、l/1、0/O）"
-                    if len(low) > 3 else ""),
+        "warning": "；".join(warnings),
     }

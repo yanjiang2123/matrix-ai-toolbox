@@ -1515,32 +1515,181 @@ def safe_spreadsheet_value(value):
 
 
 def write_xlsx(path: Path, sheets: dict[str, tuple[list[str], list[list]]]) -> Path:
-    """写多 sheet Excel。sheets = {页名: (表头, 行)}，带表头样式与列宽自适应"""
+    """写多 sheet Excel，兼顾业务字段类型、可读性与公式注入防护。"""
+    from datetime import date, datetime
+    from math import ceil
+
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
+
+    def visual_width(value) -> int:
+        """估算 Excel 显示宽度；中文按两个字符计算。"""
+        lines = str("" if value is None else value).splitlines() or [""]
+        return max((len(line) + sum(ord(ch) > 127 for ch in line) for line in lines),
+                   default=0)
+
+    def identifier_header(header) -> bool:
+        raw = str("" if header is None else header).strip().lower()
+        compact = re.sub(r"[\s_\-]+", "", raw)
+        exact = {
+            "id", "key", "code", "sku", "zip", "uuid", "编号", "编码",
+            "代码", "序号", "主键", "单号", "订单号", "账号", "卡号",
+            "证件号", "手机号", "电话", "邮编",
+        }
+        if compact in exact or compact.endswith(("编号", "编码", "代码", "单号", "账号",
+                                                  "卡号", "证件号", "手机号", "邮编")):
+            return True
+        return bool(re.search(r"(?:^|[\s_\-])(id|key|code|sku|zip|uuid)(?:$|[\s_\-])",
+                              raw))
+
+    def amount_header(header) -> bool:
+        value = str("" if header is None else header).strip().lower()
+        return any(k in value for k in (
+            "金额", "价格", "单价", "费用", "收入", "支出", "余额", "成本",
+            "amount", "price", "cost", "revenue", "balance",
+        ))
+
+    def coerce_value(value, header):
+        """返回 (Excel 值, 数字格式)；ID 与超长数字始终保留为文本。"""
+        if value is None:
+            return "", None
+        if isinstance(value, bool):
+            return value, None
+        if isinstance(value, datetime):
+            return value, "yyyy-mm-dd hh:mm:ss"
+        if isinstance(value, date):
+            return value, "yyyy-mm-dd"
+        if isinstance(value, int):
+            return value, "#,##0"
+        if isinstance(value, float):
+            return value, "#,##0.00" if amount_header(header) else "#,##0.########"
+        if not isinstance(value, str):
+            return value, None
+
+        raw = value
+        probe = raw.strip()
+        if not probe:
+            return "", None
+        if identifier_header(header) or re.fullmatch(r"[+-]?0\d+", probe):
+            return safe_spreadsheet_value(raw), "@"
+        # Excel 只有约 15 位有效数字；更长的数字即使未标成 ID 也不能转成数值。
+        digits_only = probe.lstrip("+-").replace(",", "")
+        if digits_only.isdigit() and len(digits_only) > 15:
+            return safe_spreadsheet_value(raw), "@"
+
+        percent = re.fullmatch(r"([+-]?(?:\d+(?:\.\d*)?|\.\d+))%", probe)
+        if percent:
+            decimals = len(percent.group(1).partition(".")[2])
+            fmt = "0%" if not decimals else "0." + "0" * min(decimals, 4) + "%"
+            return float(percent.group(1)) / 100, fmt
+
+        date_formats = (
+            ("%Y-%m-%d %H:%M:%S", "yyyy-mm-dd hh:mm:ss"),
+            ("%Y/%m/%d %H:%M:%S", "yyyy-mm-dd hh:mm:ss"),
+            ("%Y-%m-%d %H:%M", "yyyy-mm-dd hh:mm"),
+            ("%Y/%m/%d %H:%M", "yyyy-mm-dd hh:mm"),
+            ("%Y-%m-%d", "yyyy-mm-dd"),
+            ("%Y/%m/%d", "yyyy-mm-dd"),
+            ("%Y年%m月%d日", "yyyy-mm-dd"),
+        )
+        for pattern, number_format in date_formats:
+            try:
+                parsed = datetime.strptime(probe, pattern)
+                return (parsed.date() if "%H" not in pattern else parsed), number_format
+            except ValueError:
+                pass
+
+        currency = probe[:1] if probe[:1] in {"¥", "￥", "$"} else ""
+        numeric_probe = probe[1:].strip() if currency else probe
+        numeric = re.fullmatch(
+            r"[+-]?(?:(?:\d{1,3}(?:,\d{3})+)|\d+)(?:\.\d+)?(?:[eE][+-]?\d+)?",
+            numeric_probe,
+        )
+        if numeric:
+            clean = numeric_probe.replace(",", "")
+            decimals = len(clean.partition(".")[2].split("e")[0].split("E")[0])
+            number = float(clean) if any(ch in clean.lower() for ch in (".", "e")) else int(clean)
+            if currency:
+                return number, f'"{currency}"#,##0.00'
+            if amount_header(header):
+                return number, "#,##0.00"
+            return number, "#,##0" if not decimals else "#,##0." + "0" * min(decimals, 8)
+
+        return safe_spreadsheet_value(raw), None
 
     wb = Workbook()
     wb.remove(wb.active)
     for title, (headers, rows) in sheets.items():
         ws = wb.create_sheet(title[:31])
+        rows = list(rows)
+        ncol = max(len(headers), max((len(r) for r in rows), default=0))
+        header_fill = PatternFill("solid", fgColor=_HEADER_FILL)
+        header_font = Font(name="微软雅黑", bold=True, color="FFFFFF", size=11)
+        body_font = Font(name="微软雅黑", size=10)
+        thin = Side(style="thin", color="D9E2F3")
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        body_alignment = Alignment(vertical="center", wrap_text=True)
+
         if headers:
-            ws.append([safe_spreadsheet_value(v) for v in headers])
-            fill = PatternFill("solid", fgColor=_HEADER_FILL)
-            font = Font(name="微软雅黑", bold=True, color="FFFFFF", size=11)
-            center = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            for c in ws[1]:
-                c.fill, c.font, c.alignment = fill, font, center
+            for i in range(1, ncol + 1):
+                value = headers[i - 1] if i <= len(headers) else ""
+                cell = ws.cell(1, i, safe_spreadsheet_value(value))
+                cell.fill, cell.font, cell.alignment, cell.border = (
+                    header_fill, header_font, header_alignment, border)
+            ws.row_dimensions[1].height = 24
             ws.freeze_panes = "A2"
-        for r in rows:
-            ws.append([safe_spreadsheet_value("" if v is None else v) for v in r])
-        # 列宽：按内容估算，中文字符按 2 个宽度计
-        ncol = len(headers) if headers else (max((len(r) for r in rows), default=0))
+        data_start = 2 if headers else 1
+        for row_index, row in enumerate(rows, start=data_start):
+            for i in range(1, ncol + 1):
+                raw = row[i - 1] if i <= len(row) else ""
+                header = headers[i - 1] if i <= len(headers) else ""
+                value, number_format = coerce_value(raw, header)
+                cell = ws.cell(row_index, i, value)
+                cell.font, cell.alignment, cell.border = body_font, body_alignment, border
+                if number_format:
+                    cell.number_format = number_format
+
+        # 列宽按前 500 行估算；长文本列收窄并换行，避免整页被单列撑开。
+        widths: dict[int, float] = {}
         for i in range(1, ncol + 1):
             vals = [headers[i - 1]] if headers and i <= len(headers) else []
-            vals += [str(r[i - 1]) for r in rows[:300] if i <= len(r) and r[i - 1] is not None]
-            w = max((len(v) + sum(1 for ch in v if ord(ch) > 127) for v in vals), default=8)
-            ws.column_dimensions[get_column_letter(i)].width = min(max(w + 3, 9), 52)
+            vals += [r[i - 1] for r in rows[:500] if i <= len(r) and r[i - 1] is not None]
+            width = min(max(max((visual_width(v) for v in vals), default=8) + 2, 10), 42)
+            widths[i] = width
+            ws.column_dimensions[get_column_letter(i)].width = width
+
+        # 按换行后的预计行数设置行高，兼顾可读性和表格密度。
+        for row_index in range(data_start, data_start + len(rows)):
+            line_count = 1
+            for i in range(1, ncol + 1):
+                value = ws.cell(row_index, i).value
+                if value in (None, ""):
+                    continue
+                per_line = max(int(widths.get(i, 10) - 2), 6)
+                chunks = sum(max(1, ceil(visual_width(line) / per_line))
+                             for line in str(value).splitlines() or [""])
+                line_count = max(line_count, chunks)
+            # Excel 行高上限约 409 点；360 点可以容纳约 20 行，同时避免极端文本无限撑高。
+            ws.row_dimensions[row_index].height = min(360, max(20, line_count * 18))
+
+        if ncol:
+            last_col = get_column_letter(ncol)
+            last_row = max(ws.max_row, 1)
+            ws.sheet_view.showGridLines = False
+            ws.print_area = f"A1:{last_col}{last_row}"
+            ws.sheet_properties.pageSetUpPr.fitToPage = True
+            ws.page_setup.fitToWidth = 1
+            ws.page_setup.fitToHeight = 0
+            ws.page_setup.paperSize = ws.PAPERSIZE_A4
+            ws.page_setup.orientation = (ws.ORIENTATION_LANDSCAPE if ncol > 6
+                                         else ws.ORIENTATION_PORTRAIT)
+            ws.page_margins.left = ws.page_margins.right = 0.25
+            ws.page_margins.top = ws.page_margins.bottom = 0.5
+            if headers:
+                ws.auto_filter.ref = f"A1:{last_col}{last_row}"
+                ws.print_title_rows = "1:1"
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
     return path
@@ -1572,19 +1721,34 @@ def detect_delimiter(line: str) -> str:
 
 
 def split_line(line: str, delim: str) -> list[str]:
-    import re
     if delim == "  ":
-        return [c for c in re.split(r"\s{2,}", line.strip()) if c]
-    return [c.strip() for c in line.split(delim)]
+        return [c.strip() for c in re.split(r"\s{2,}", line.strip()) if c.strip()]
+    if delim not in {"\t", "|", ","}:
+        raise RuntimeError("不支持的文本分隔符")
+    return [cell.strip() for cell in next(csv.reader([line], delimiter=delim))]
 
 
 def text_to_rows(text: str, delim: str = "auto") -> list[list[str]]:
-    """粘贴的表格文本 → 补齐列数的二维数组"""
-    lines = [l for l in text.splitlines() if l.strip()]
-    if not lines:
+    """粘贴的表格文本 → 二维数组；支持引号字段并保留内部空行。"""
+    import io
+
+    lines = text.splitlines()
+    nonempty = [i for i, line in enumerate(lines) if line.strip()]
+    if not nonempty:
         raise RuntimeError("没有可解析的文本")
+    # 去掉粘贴内容首尾的空行，但保留表格内部空行作为版式分隔。
+    lines = lines[nonempty[0]:nonempty[-1] + 1]
     if delim == "auto":
-        delim = detect_delimiter(lines[0])
-    rows = [split_line(l, delim) for l in lines]
+        delim = detect_delimiter(next(line for line in lines if line.strip()))
+    if delim == "  ":
+        rows = [split_line(line, delim) if line.strip() else [] for line in lines]
+    elif delim in {"\t", "|", ","}:
+        source = "\n".join(lines)
+        rows = [[cell.strip() for cell in row]
+                for row in csv.reader(io.StringIO(source), delimiter=delim)]
+    else:
+        raise RuntimeError("不支持的文本分隔符")
+    if rows and rows[0]:
+        rows[0][0] = rows[0][0].lstrip("\ufeff")
     n = max(len(r) for r in rows)
     return [r + [""] * (n - len(r)) for r in rows]
