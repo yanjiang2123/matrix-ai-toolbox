@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 本机配置、运行产物与上传缓存
+config.json
+config.local.json
+table_pairs.json
+data/
+uploads/
+
+# 打包和可选依赖产物
+build/
+dist/
+.selftest/
+*.spec
+*.jar
+vendor/ocr
+vendor/ocr.swift

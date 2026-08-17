@@ -460,7 +460,7 @@ def build_report(res: dict, name_a: str = "A", name_b: str = "B") -> dict:
              [d["column"], d["value_a"], d["value_b"], d["row_a"], d["row_b"]]
              for d in res["diffs"][:MAX_EXCEL_DIFF_ROWS]]
 
-    def side_sheet(items, tag):
+    def side_sheet(items):
         h = keys + ["情况", "行号"] + cols
         rows = []
         for d in items[:MAX_EXCEL_DIFF_ROWS]:
@@ -470,9 +470,10 @@ def build_report(res: dict, name_a: str = "A", name_b: str = "B") -> dict:
                         [kind, d["row"]] + [d.get(f"val_{c}", "") for c in cols])
         return h, rows
 
-    ha, rows_a = side_sheet(res["only_a"], "a")
-    hb, rows_b = side_sheet(res["only_b"], "b")
+    ha, rows_a = side_sheet(res["only_a"])
+    hb, rows_b = side_sheet(res["only_b"])
     return {"结论": (["项目", "内容"], summary),
             "字段值差异": (dh, drows),
-            f"仅{name_a}有": (ha, rows_a),
-            f"仅{name_b}有": (hb, rows_b)}
+            # 文件显示名可能完全相同；固定页名可避免字典键碰撞导致一侧数据丢失。
+            "仅A有": (ha, rows_a),
+            "仅B有": (hb, rows_b)}

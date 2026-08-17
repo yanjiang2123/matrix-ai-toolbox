@@ -203,7 +203,13 @@ def excel_to_insert(xlsx: Path, ddl: str, batch: int = 500,
 
 
 def _wrap_insert(table: str, col_list: str, values: list[str]) -> str:
-    return (f"INSERT INTO {table}\n  ({col_list})\nVALUES\n  "
+    quoted_table = ".".join(
+        "`" + part.replace("`", "``") + "`"
+        for part in table.split(".") if part
+    )
+    if not quoted_table:
+        raise ValueError("目标表名不能为空")
+    return (f"INSERT INTO {quoted_table}\n  ({col_list})\nVALUES\n  "
             + ",\n  ".join(values) + ";")
 
 
