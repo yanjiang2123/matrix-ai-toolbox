@@ -1879,12 +1879,16 @@ async function accumulateToArchive(){
     {pk, col:'', a:'(存在)', b:'', kind:'仅 A 侧有'}));
   (j.only_b||[]).forEach(pk => diffs.push(
     {pk, col:'', a:'', b:'(存在)', kind:'仅 B 侧有'}));
-  if(!diffs.length) return alert('本轮没有任何差异可累入（包括 only_a/only_b）');
-  // 本轮主键集合 = diffs 的 pk ∪ only_a ∪ only_b（已合到 diffs 里）
-  const pksInScope = Array.from(new Set(diffs.map(d=>d.pk).filter(Boolean)));
+  // 后端返回本轮实际检查过的完整主键集合；即使零差异，也能据此关闭历史差异。
+  const pksInScope = Array.from(new Set(
+    (j.pks_in_scope||diffs.map(d=>d.pk)).filter(Boolean)));
+  if(!diffs.length && !pksInScope.length)
+    return alert('本轮没有可确认的主键范围，无法更新差异档案');
+  if(j.archive_scope_truncated && !confirm(
+      '本轮结果较大，差异档案只会更新已完整回传的主键范围，其他历史状态保持不变。\n\n继续？')) return;
   const btn = q('#pb-archive-run'), old = btn.textContent;
   btn.disabled = true; btn.textContent = '累入中…';
-  busy(true); say(`累入 ${diffs.length} 条差异到「${name}」…`);
+  busy(true); say(`复核 ${pksInScope.length} 个主键并累入 ${diffs.length} 条差异到「${name}」…`);
   try{
     const r = await post('/api/sql/accumulate-diffs',
       {name, diffs, time_slice:slice, pks_in_scope:pksInScope});
